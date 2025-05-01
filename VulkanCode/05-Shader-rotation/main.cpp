@@ -1280,22 +1280,23 @@ private:
     void updateUniformBuffer(const uint32_t frame)
     {
         // ora creiamo la trasformazione del triangolo, che è una matrice 4x4 che ci permette di ruotare il triangolo attorno ad un asse
-        glm::mat4 transform = glm::mat4(1.0f); // matrice di rotazione del triangolo
+        glm::mat4 transform; // matrice di rotazione del triangolo
         switch (rotation_axis)
         {
         case 'x':
-            transform = glm::rotate(transform, glm::radians(theta), glm::vec3(1.0f, 0.0f, 0.0f)); // ruota il triangolo attorno all'asse x
+            transform = glm::rotate(glm::mat4(), glm::radians(theta), glm::vec3(1.0f, 0.0f, 0.0f)); // ruota il triangolo attorno all'asse x
             break;
         case 'y':
-            transform = glm::rotate(transform, glm::radians(theta), glm::vec3(0.0f, 1.0f, 0.0f)); // ruota il triangolo attorno all'asse y
+            transform = glm::rotate(glm::mat4(), glm::radians(theta), glm::vec3(0.0f, 1.0f, 0.0f)); // ruota il triangolo attorno all'asse y
             break;
         case 'z':
-            transform = glm::rotate(transform, glm::radians(theta), glm::vec3(0.0f, 0.0f, 1.0f)); // ruota il triangolo attorno all'asse z
+            transform = glm::rotate(glm::mat4(), glm::radians(theta), glm::vec3(0.0f, 0.0f, 1.0f)); // ruota il triangolo attorno all'asse z
             break;
         case 'a':
-            transform = glm::rotate(transform, glm::radians(theta), glm::vec3(1.0f, 1.0f, 1.0f)); // ruota il triangolo attorno a tutti gli assi insieme
+            transform = glm::rotate(glm::mat4(), glm::radians(theta), glm::vec3(1.0f, 1.0f, 1.0f)); // ruota il triangolo attorno a tutti gli assi insieme
             break;
         default:
+            transform = glm::mat4(); // matrice identità, non ruota il triangolo
             break;
         }
         UniformBufferObject ubo{};
