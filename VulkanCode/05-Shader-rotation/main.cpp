@@ -1284,16 +1284,16 @@ private:
         switch (rotation_axis)
         {
         case 'x':
-            transform = glm::rotate(transform, theta, glm::vec3(1.0f, 0.0f, 0.0f)); // ruota il triangolo attorno all'asse x
+            transform = glm::rotate(transform, glm::radians(theta), glm::vec3(1.0f, 0.0f, 0.0f)); // ruota il triangolo attorno all'asse x
             break;
         case 'y':
-            transform = glm::rotate(transform, theta, glm::vec3(0.0f, 1.0f, 0.0f)); // ruota il triangolo attorno all'asse y
+            transform = glm::rotate(transform, glm::radians(theta), glm::vec3(0.0f, 1.0f, 0.0f)); // ruota il triangolo attorno all'asse y
             break;
         case 'z':
-            transform = glm::rotate(transform, theta, glm::vec3(0.0f, 0.0f, 1.0f)); // ruota il triangolo attorno all'asse z
+            transform = glm::rotate(transform, glm::radians(theta), glm::vec3(0.0f, 0.0f, 1.0f)); // ruota il triangolo attorno all'asse z
             break;
         case 'a':
-            transform = glm::rotate(transform, theta, glm::vec3(1.0f, 1.0f, 1.0f)); // ruota il triangolo attorno a tutti gli assi insieme
+            transform = glm::rotate(transform, glm::radians(theta), glm::vec3(1.0f, 1.0f, 1.0f)); // ruota il triangolo attorno a tutti gli assi insieme
             break;
         default:
             break;
