@@ -1227,7 +1227,6 @@ private:
 
     // in caso di immagini più complesse, come un semplice rettangolo, formato da 2 triangoli, ci servirà un buffer di indici
     // così da evitare ridondanza ripetendo gli stessi vertici più volte
-    // anche se non necessario in questo momento, lo creiamo per il futuro
     // la creazione del buffer di indici è simile a quella del buffer di vertici, ma con alcune differenze
     void createIndexBuffer()
     {
