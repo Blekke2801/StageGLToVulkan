@@ -39,6 +39,7 @@ const uint32_t MAX_FRAMES_IN_FLIGHT = 2; // numero di frame in volo
 struct Vertex
 {
     glm::vec3 pos;
+    glm::vec3 color;
 
     // vulkan ha bisogno di sapere come interpretare i dati che gli passiamo, quindi dobbiamo specificare il formato dei dati
     static VkVertexInputBindingDescription getBindingDescription()
@@ -52,9 +53,9 @@ struct Vertex
     }
 
     // questo invece è per dire come estrarre i dati dai vertici, quindi dobbiamo specificare il formato dei dati e l'offset (cioè la posizione del dato all'interno della struttura)
-    static std::array<VkVertexInputAttributeDescription, 1> getAttributeDescriptions()
+    static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions()
     {
-        std::array<VkVertexInputAttributeDescription, 1> attributeDescriptions{};
+        std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
         attributeDescriptions[0].binding = 0;
         attributeDescriptions[0].location = 0;
         // che formato ha il dato?
@@ -65,16 +66,24 @@ struct Vertex
         attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
         attributeDescriptions[0].offset = offsetof(Vertex, pos);
 
+        attributeDescriptions[1].binding = 0;
+        attributeDescriptions[1].location = 1;
+        // come sopra, ma per il colore
+        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescriptions[1].offset = offsetof(Vertex, color);
+
         return attributeDescriptions;
     }
 };
-// il nostro triangolo è composto da 3 vertici, ognuno con una posizione
+// il nostro triangolo è composto da 3 vertici, ognuno con una posizione e un colore (tutti rossi)
 // essendo che in vulkan l'origine è in alto a sinistra e non in basso a sinistra come in opengl, dobbiamo invertire la y
 // le opzioni sono 3, nella shader, qui, oppure possiamo ribaltare la viewport, ribalteremo la viewport in modo da non dover modificare lo shader o i singoli vertici
 const std::vector<Vertex> vertices = {
-    {{-1.0f, -1.0f, 0.0f}},
-    {{1.0f, -1.0f, 0.0f}},
-    {{0.0f, 1.0f, 0.0f}}};
+    {{-1.0f, -1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},
+    {{1.0f, -1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},
+    {{0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}};
+const std::vector<uint16_t> indices = {
+    0, 1, 2}; // indici dei vertici, in questo caso sono gli stessi dei vertici, ma in un'applicazione reale potrebbero essere diversi
 struct QueueFamilyIndices
 {
     std::optional<uint32_t> graphicsFamily;
@@ -185,24 +194,7 @@ private:
                 std::cout << "Escape pressed" << std::endl;
                 glfwSetWindowShouldClose(window, true);
                 break;
-            case GLFW_KEY_X:
-                std::cout << "X pressed" << std::endl;
-                // ruota seguendo l'asse x
-                break;
-            case GLFW_KEY_Y:
-                std::cout << "Y pressed" << std::endl;
-                // ruota seguendo l'asse y
-                break;
-            case GLFW_KEY_Z:
-                std::cout << "Z pressed" << std::endl;
-                // ruota seguendo l'asse z
-                break;
-            case GLFW_KEY_A:
-                std::cout << "A pressed" << std::endl;
-                // ruota seguendo tutti gli assi insieme
-                break;
             default:
-                std::cout << "wrong key" << std::endl;
                 break;
             }
         }
@@ -1164,7 +1156,7 @@ private:
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-        vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0); 
+        vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
 
         // ora che abbiamo finito di disegnare, possiamo finalmente terminare il render pass
         vkCmdEndRenderPass(commandBuffer);

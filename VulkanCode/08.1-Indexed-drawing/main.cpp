@@ -39,6 +39,7 @@ const uint32_t MAX_FRAMES_IN_FLIGHT = 2; // numero di frame in volo
 struct Vertex
 {
     glm::vec3 pos;
+    glm::vec3 color;
 
     // vulkan ha bisogno di sapere come interpretare i dati che gli passiamo, quindi dobbiamo specificare il formato dei dati
     static VkVertexInputBindingDescription getBindingDescription()
@@ -52,9 +53,9 @@ struct Vertex
     }
 
     // questo invece è per dire come estrarre i dati dai vertici, quindi dobbiamo specificare il formato dei dati e l'offset (cioè la posizione del dato all'interno della struttura)
-    static std::array<VkVertexInputAttributeDescription, 1> getAttributeDescriptions()
+    static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions()
     {
-        std::array<VkVertexInputAttributeDescription, 1> attributeDescriptions{};
+        std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
         attributeDescriptions[0].binding = 0;
         attributeDescriptions[0].location = 0;
         // che formato ha il dato?
@@ -65,16 +66,24 @@ struct Vertex
         attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
         attributeDescriptions[0].offset = offsetof(Vertex, pos);
 
+        attributeDescriptions[1].binding = 0;
+        attributeDescriptions[1].location = 1;
+        // come sopra, ma per il colore
+        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescriptions[1].offset = offsetof(Vertex, color);
+
         return attributeDescriptions;
     }
 };
-// il nostro triangolo è composto da 3 vertici, ognuno con una posizione
+// il nostro triangolo è composto da 3 vertici, ognuno con una posizione e un colore (tutti rossi)
 // essendo che in vulkan l'origine è in alto a sinistra e non in basso a sinistra come in opengl, dobbiamo invertire la y
 // le opzioni sono 3, nella shader, qui, oppure possiamo ribaltare la viewport, ribalteremo la viewport in modo da non dover modificare lo shader o i singoli vertici
 const std::vector<Vertex> vertices = {
-    {{-1.0f, -1.0f, 0.0f}},
-    {{1.0f, -1.0f, 0.0f}},
-    {{0.0f, 1.0f, 0.0f}}};
+    {{-1.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
+    {{1.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
+    {{0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}}};
+const std::vector<uint16_t> indices = {
+    0, 1, 2}; // indici dei vertici, in questo caso sono gli stessi dei vertici, ma in un'applicazione reale potrebbero essere diversi
 struct QueueFamilyIndices
 {
     std::optional<uint32_t> graphicsFamily;
@@ -151,6 +160,8 @@ private:
     std::vector<VkCommandBuffer> commandBuffers;      // buffer di comandi Vulkan
     VkBuffer vertexBuffer;                            // buffer dei vertici Vulkan
     VkDeviceMemory vertexBufferMemory;                // memoria del buffer dei vertici Vulkan
+    VkBuffer indexBuffer;                             // buffer degli indici Vulkan
+    VkDeviceMemory indexBufferMemory;                 // memoria del buffer degli indici Vulkan
 
     // sto usando dei vettori in caso ci siano dei frame aggiuntivi, ma essendo che non ci sono, si puà usare anche un solo elemento
     // i vettori adesso sono solo per scopo didattico, in un'applicazione reale si userebbero i frame in volo per gestire più frame contemporaneamente
@@ -221,6 +232,7 @@ private:
         createFramebuffers();
         createCommandPool();
         createVertexBuffer();
+        createIndexBuffer();
         createCommandBuffers();
         createSyncObjects();
     }
@@ -242,6 +254,8 @@ private:
     {
         cleanupSwapChain();
 
+        vkDestroyBuffer(device, indexBuffer, nullptr);
+        vkFreeMemory(device, indexBufferMemory, nullptr);
         vkDestroyBuffer(device, vertexBuffer, nullptr);
         vkFreeMemory(device, vertexBufferMemory, nullptr);
 
@@ -1164,7 +1178,11 @@ private:
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-        vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0); 
+        // ora dobbiamo specificare il buffer di indici
+        vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+
+        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+        // vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0); se non vogliamo usare il buffer di indici, possiamo usare questa funzione
 
         // ora che abbiamo finito di disegnare, possiamo finalmente terminare il render pass
         vkCmdEndRenderPass(commandBuffer);
@@ -1205,6 +1223,31 @@ private:
         // e ora puliamo il buffer di staging, che non ci serve più
         vkDestroyBuffer(device, stagingBuffer, nullptr);    // distruggiamo il buffer di staging
         vkFreeMemory(device, stagingBufferMemory, nullptr); // distruggiamo la memoria del buffer di staging
+    }
+
+    // in caso di immagini più complesse, come un semplice rettangolo, formato da 2 triangoli, ci servirà un buffer di indici
+    // così da evitare ridondanza ripetendo gli stessi vertici più volte
+    // la creazione del buffer di indici è simile a quella del buffer di vertici, ma con alcune differenze
+    void createIndexBuffer()
+    {
+        VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingBufferMemory;
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+        void *data;
+        vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+        memcpy(data, indices.data(), (size_t)bufferSize);
+        vkUnmapMemory(device, stagingBufferMemory);
+
+        // la differenza principale è che il buffer di indici deve essere creato con VK_BUFFER_USAGE_INDEX_BUFFER_BIT
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+
+        copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+
+        vkDestroyBuffer(device, stagingBuffer, nullptr);
+        vkFreeMemory(device, stagingBufferMemory, nullptr);
     }
 
     // questa funzione verrà utilizzata per copiare i dati da un buffer ad un altro
