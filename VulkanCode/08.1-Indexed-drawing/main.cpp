@@ -9,6 +9,7 @@
 #include <glm/vec4.hpp>
 #include <glm/mat4x4.hpp>
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <iostream>
 #include <stdexcept>
@@ -21,6 +22,7 @@
 #include <limits>
 #include <algorithm>
 #include <fstream>
+#include <chrono>
 
 #ifdef NDEBUG
 const bool enableValidationLayers = false;
@@ -35,12 +37,18 @@ const uint32_t WIDTH = 1024;
 const uint32_t HEIGHT = 768;
 
 const uint32_t MAX_FRAMES_IN_FLIGHT = 2; // numero di frame in volo
+auto previousTime = std::chrono::high_resolution_clock::now();
 
+struct UniformBufferObject
+{
+    glm::mat4 transform;
+    glm::mat4 view;
+    glm::mat4 proj;
+};
 struct Vertex
 {
     glm::vec3 pos;
     glm::vec3 color;
-
     // vulkan ha bisogno di sapere come interpretare i dati che gli passiamo, quindi dobbiamo specificare il formato dei dati
     static VkVertexInputBindingDescription getBindingDescription()
     {
@@ -71,19 +79,29 @@ struct Vertex
         // come sopra, ma per il colore
         attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
         attributeDescriptions[1].offset = offsetof(Vertex, color);
-
+        
         return attributeDescriptions;
     }
 };
-// il nostro triangolo è composto da 3 vertici, ognuno con una posizione e un colore (tutti rossi)
+// il nostro triangolo è composto da 3 vertici, ognuno con una posizione
 // essendo che in vulkan l'origine è in alto a sinistra e non in basso a sinistra come in opengl, dobbiamo invertire la y
 // le opzioni sono 3, nella shader, qui, oppure possiamo ribaltare la viewport, ribalteremo la viewport in modo da non dover modificare lo shader o i singoli vertici
 const std::vector<Vertex> vertices = {
-    {{-1.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-    {{1.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-    {{0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}}};
-const std::vector<uint16_t> indices = {
-    0, 1, 2}; // indici dei vertici, in questo caso sono gli stessi dei vertici, ma in un'applicazione reale potrebbero essere diversi
+    {{-1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}},
+    {{0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
+    {{0.0f, 1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}},
+
+    {{0.0f, -1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}},
+    {{1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}},
+    {{0.0f, 1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}},
+
+    {{-1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}},
+    {{0.0f, 1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}},
+    {{1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}},
+
+    {{0.0f, -1.0f, 0.0f}, {1.0f, 1.0f, 0.0f}},
+    {{-1.0f, -1.0f, -1.0f}, {1.0f, 1.0f, 0.0f}},
+    {{1.0f, -1.0f, -1.0f}, {1.0f, 1.0f, 0.0f}}};
 struct QueueFamilyIndices
 {
     std::optional<uint32_t> graphicsFamily;
@@ -114,15 +132,18 @@ static std::vector<char> readFile(const std::string &filename)
     // il puntatore alla fine del file è un long long, quindi dobbiamo convertirlo in un size_t (che è un unsigned int)
     size_t fileSize = (size_t)file.tellg();
     std::vector<char> buffer(fileSize);
-
+    
     // dopo aver allocato la memoria necesssaria, possiamo finalmente andare all'inizio del file e leggerlo
     file.seekg(0);
     file.read(buffer.data(), fileSize);
-
+    
     file.close();
-
+    
     return buffer;
 }
+
+// questo struct servirà a passare i dati alla shader, in questo caso la matrice di proiezione e la matrice di vista
+
 class HelloTriangleApplication
 {
 public:
@@ -151,8 +172,11 @@ private:
     VkExtent2D swapChainExtent;
     std::vector<VkImageView> swapChainImageViews; // image view della swap chain Vulkan
 
-    VkRenderPass renderPass;         // passaggio di rendering Vulkan
-    VkPipelineLayout pipelineLayout; // layout della pipeline Vulkan
+    VkRenderPass renderPass;                     // passaggio di rendering Vulkan
+    VkDescriptorSetLayout descriptorSetLayout;   // layout del set di descrittori Vulkan
+    VkDescriptorPool descriptorPool;             // pool di descrittori Vulkan
+    std::vector<VkDescriptorSet> descriptorSets; // set di descrittori Vulkan
+    VkPipelineLayout pipelineLayout;             // layout della pipeline Vulkan
     VkPipeline graphicsPipeline;
 
     std::vector<VkFramebuffer> swapChainFramebuffers; // framebuffer della swap chain Vulkan
@@ -160,8 +184,9 @@ private:
     std::vector<VkCommandBuffer> commandBuffers;      // buffer di comandi Vulkan
     VkBuffer vertexBuffer;                            // buffer dei vertici Vulkan
     VkDeviceMemory vertexBufferMemory;                // memoria del buffer dei vertici Vulkan
-    VkBuffer indexBuffer;                             // buffer degli indici Vulkan
-    VkDeviceMemory indexBufferMemory;                 // memoria del buffer degli indici Vulkan
+    std::vector<VkBuffer> uniformBuffers;             // buffer uniformi Vulkan
+    std::vector<VkDeviceMemory> uniformBuffersMemory; // memoria dei buffer uniformi Vulkan
+    std::vector<void *> uniformBuffersMapped;         // puntatori ai buffer uniformi Vulkan
 
     // sto usando dei vettori in caso ci siano dei frame aggiuntivi, ma essendo che non ci sono, si puà usare anche un solo elemento
     // i vettori adesso sono solo per scopo didattico, in un'applicazione reale si userebbero i frame in volo per gestire più frame contemporaneamente
@@ -196,24 +221,7 @@ private:
                 std::cout << "Escape pressed" << std::endl;
                 glfwSetWindowShouldClose(window, true);
                 break;
-            case GLFW_KEY_X:
-                std::cout << "X pressed" << std::endl;
-                // ruota seguendo l'asse x
-                break;
-            case GLFW_KEY_Y:
-                std::cout << "Y pressed" << std::endl;
-                // ruota seguendo l'asse y
-                break;
-            case GLFW_KEY_Z:
-                std::cout << "Z pressed" << std::endl;
-                // ruota seguendo l'asse z
-                break;
-            case GLFW_KEY_A:
-                std::cout << "A pressed" << std::endl;
-                // ruota seguendo tutti gli assi insieme
-                break;
             default:
-                std::cout << "wrong key" << std::endl;
                 break;
             }
         }
@@ -228,18 +236,22 @@ private:
         createSwapChain();
         createImageViews();
         createRenderPass();
+        createDescriptorSetLayout();
         createGraphicsPipeline();
         createFramebuffers();
         createCommandPool();
         createVertexBuffer();
-        createIndexBuffer();
+        createUniformBuffers();
+        createDescriptorPool();
+        createDescriptorSets();
         createCommandBuffers();
         createSyncObjects();
     }
-    
+
     // questa funzione gestisce tutti gli eventi della finestra in esecuzione
     void mainLoop()
     {
+
         while (!glfwWindowShouldClose(window))
         {
             glfwPollEvents();
@@ -248,14 +260,20 @@ private:
         // aspettiamo che il dispositivo sia idle prima di chiudere l'applicazione
         vkDeviceWaitIdle(device);
     }
-    
+
     // questo fungerà da "distruttore" per la nostra applicazione, liberando le risorse allocate
     void cleanup()
     {
         cleanupSwapChain();
 
-        vkDestroyBuffer(device, indexBuffer, nullptr);
-        vkFreeMemory(device, indexBufferMemory, nullptr);
+        for (size_t i = 0; i < uniformBuffers.size(); i++)
+        {
+            vkDestroyBuffer(device, uniformBuffers[i], nullptr);
+            vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
+        }
+
+        vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+
         vkDestroyBuffer(device, vertexBuffer, nullptr);
         vkFreeMemory(device, vertexBufferMemory, nullptr);
 
@@ -590,10 +608,12 @@ private:
             // se non è un problema l'uso di energia, possiamo usare questa modalità
             if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
             {
+                std::cout << "Using VK_PRESENT_MODE_MAILBOX_KHR" << std::endl;
                 return availablePresentMode;
             }
         }
         // questa modalità è sempre disponibile, quindi la usiamo come fallback
+        std::cout << "Using VK_PRESENT_MODE_FIFO_KHR" << std::endl;
         return VK_PRESENT_MODE_FIFO_KHR;
     }
 
@@ -931,11 +951,10 @@ private:
         // questo struct specifica lo stato della pipeline, cioè il processo di creazione della pipeline
         VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        pipelineLayoutInfo.setLayoutCount = 0;            // opzionale
-        pipelineLayoutInfo.pSetLayouts = nullptr;         // opzionale
-        pipelineLayoutInfo.pushConstantRangeCount = 0;    // opzionale
-        pipelineLayoutInfo.pPushConstantRanges = nullptr; // opzionale
-
+        pipelineLayoutInfo.setLayoutCount = 1;                 // abbiamo solo 1 descriptor set layout, quindi 1
+        pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout; // il layout dei descriptor set, che abbiamo creato prima
+        pipelineLayoutInfo.pushConstantRangeCount = 0;         // opzionale
+        pipelineLayoutInfo.pPushConstantRanges = nullptr;      // opzionale
         // ora che abbiamo settato tutti i parametri, possiamo finalmente creare la pipeline layout
         if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
         {
@@ -969,6 +988,26 @@ private:
         vkDestroyShaderModule(device, vertShaderModule, nullptr);
     }
 
+    // questa funzione ci permette di creare il descriptor set layout, esso specifica i tipi di dati che vogliamo passare alla pipeline
+    void createDescriptorSetLayout()
+    {
+        VkDescriptorSetLayoutBinding uboLayoutBinding{};
+        uboLayoutBinding.binding = 0;
+        uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        uboLayoutBinding.descriptorCount = 1;
+        uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        uboLayoutBinding.pImmutableSamplers = nullptr; // Opzionale, è per lo più usato per le texture
+
+        VkDescriptorSetLayoutCreateInfo layoutInfo{};
+        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        layoutInfo.bindingCount = 1;
+        layoutInfo.pBindings = &uboLayoutBinding;
+
+        if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
+        {
+            throw std::runtime_error("failed to create descriptor set layout!");
+        }
+    }
     // questa funzione ci permette di creare la render pass, che è un oggetto vulkan che rappresenta il passaggio di rendering
     void createRenderPass()
     {
@@ -1178,11 +1217,9 @@ private:
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-        // ora dobbiamo specificare il buffer di indici
-        vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
-        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
-        // vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0); se non vogliamo usare il buffer di indici, possiamo usare questa funzione
+        vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
 
         // ora che abbiamo finito di disegnare, possiamo finalmente terminare il render pass
         vkCmdEndRenderPass(commandBuffer);
@@ -1225,29 +1262,103 @@ private:
         vkFreeMemory(device, stagingBufferMemory, nullptr); // distruggiamo la memoria del buffer di staging
     }
 
-    // in caso di immagini più complesse, come un semplice rettangolo, formato da 2 triangoli, ci servirà un buffer di indici
-    // così da evitare ridondanza ripetendo gli stessi vertici più volte
-    // la creazione del buffer di indici è simile a quella del buffer di vertici, ma con alcune differenze
-    void createIndexBuffer()
+    void createUniformBuffers()
     {
-        VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+        VkDeviceSize bufferSize = sizeof(UniformBufferObject);
 
-        VkBuffer stagingBuffer;
-        VkDeviceMemory stagingBufferMemory;
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+        uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+        uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+        uniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
 
-        void *data;
-        vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-        memcpy(data, indices.data(), (size_t)bufferSize);
-        vkUnmapMemory(device, stagingBufferMemory);
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+        {
+            createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
 
-        // la differenza principale è che il buffer di indici deve essere creato con VK_BUFFER_USAGE_INDEX_BUFFER_BIT
-        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+            vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+        }
+    }
 
-        copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+    void updateUniformBuffer(const uint32_t frame)
+    {
+        //per rendere il triangolo animato, dobbiamo aggiornare la matrice di trasformazione ogni frame
+        //  per farlo usiamo la funzione std::chrono::high_resolution_clock::now() che ci permette di ottenere il tempo attuale
+        //  e la funzione std::chrono::duration<float>(currentTime - previousTime).count() che ci permette di calcolare il delta time
+        //  così da rendere il triangolo animato in modo fluido e non a scatti
+        auto currentTime = std::chrono::high_resolution_clock::now();
 
-        vkDestroyBuffer(device, stagingBuffer, nullptr);
-        vkFreeMemory(device, stagingBufferMemory, nullptr);
+        float deltaTime = std::chrono::duration<float>(currentTime - previousTime).count();
+        previousTime = currentTime;
+        static float angle = 0.0f;
+        float rotationSpeed = 90.0f; // gradi al secondo
+        angle += glm::radians(rotationSpeed) * deltaTime;
+        // ora creiamo la trasformazione del triangolo, che è una matrice 4x4 che ci permette di ruotare il triangolo attorno ad un asse
+        //  in questo caso usiamo la funzione glm::rotate, che ci permette di ruotare il triangolo attorno ad un asse
+        UniformBufferObject ubo{};
+        glm::mat4 rx = glm::rotate(glm::mat4(), angle, glm::vec3(1.0f, 0.0f, 0.0f));
+        glm::mat4 ry = glm::rotate(glm::mat4(), angle, glm::vec3(0.0f, 1.0f, 0.0f));
+        glm::mat4 scale = glm::scale(glm::mat4(), glm::vec3(0.5f, 0.5f, 0.5f));                                               // scala il triangolo
+        ubo.transform = rx * ry * scale;                                                                                      // la matrice di trasformazione finale è la somma delle 2 matrici
+        ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));        // posizione della camera
+        ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f); // proiezione prospettica
+        memcpy(uniformBuffersMapped[frame], &ubo, sizeof(ubo));                                                               // copiamo i dati nel buffer
+    }
+
+    // questa funzione ci permette di creare un descriptor pool, che ci serve per allocare i descriptor set
+    void createDescriptorPool()
+    {
+        VkDescriptorPoolSize poolSize{};
+        poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        poolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+        VkDescriptorPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfo.poolSizeCount = 1;
+        poolInfo.pPoolSizes = &poolSize;
+        poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+        if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
+        {
+            throw std::runtime_error("failed to create descriptor pool!");
+        }
+    }
+
+    void createDescriptorSets()
+    {
+        std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
+        VkDescriptorSetAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.descriptorPool = descriptorPool;
+        allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+        allocInfo.pSetLayouts = layouts.data();
+
+        descriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+        if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets.data()) != VK_SUCCESS)
+        {
+            throw std::runtime_error("failed to allocate descriptor sets!");
+        }
+
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT /*possiamo usare anche VK_WHOLE_SIZE*/; i++)
+        {
+            VkDescriptorBufferInfo bufferInfo{};
+            bufferInfo.buffer = uniformBuffers[i];
+            bufferInfo.offset = 0;
+            bufferInfo.range = sizeof(UniformBufferObject);
+
+            VkWriteDescriptorSet descriptorWrite{};
+            descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrite.dstSet = descriptorSets[i];
+            descriptorWrite.dstBinding = 0;
+            descriptorWrite.dstArrayElement = 0;
+
+            descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            descriptorWrite.descriptorCount = 1;
+
+            descriptorWrite.pBufferInfo = &bufferInfo;
+            descriptorWrite.pImageInfo = nullptr;       // Optional
+            descriptorWrite.pTexelBufferView = nullptr; // Optional
+
+            vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+        }
     }
 
     // questa funzione verrà utilizzata per copiare i dati da un buffer ad un altro
@@ -1308,6 +1419,7 @@ private:
 
     void drawFrame()
     {
+
         // questa funzione prende un array di fence e aspetta che una o tutte le fence siano pronte prima di ritornare un valore
         // il VK_TRUE indica che vogliamo aspettare tutte le fence (essendo solo una in questo caso, non cambia nulla)
         // mentre il UINT64_MAX indica il tempo massimo per un timeout di attesa (essendo massimo, esso viene disabilitato)
@@ -1343,6 +1455,9 @@ private:
         vkResetCommandBuffer(commandBuffers[currentFrame], 0);
         // ora registriamo il command buffer, che è il buffer di comandi che abbiamo creato prima
         recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
+
+        // aggiorniamo il buffer di uniformi con la matrice di rotazione del triangolo
+        updateUniformBuffer(currentFrame); // aggiorna la matrice di rotazione del triangolo
 
         // per configurare la sincronizzazione usiamo il seguente struct
         VkSubmitInfo submitInfo{};
@@ -1398,7 +1513,6 @@ private:
         {
             throw std::runtime_error("failed to acquire swap chain image!");
         }
-
         // ora che abbiamo presentato l'immagine, possiamo passare al frame successivo
         currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     }
