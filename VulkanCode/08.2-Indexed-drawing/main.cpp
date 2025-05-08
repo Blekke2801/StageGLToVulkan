@@ -92,15 +92,14 @@ const std::vector<Vertex> vertices = {
     {{0.0f, 1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}},
     {{1.0f, -1.0f, -1.0f}, {1.0f, 1.0f, 0.0f}}};
 
-
 // gli indici servono a dire quali vertici usare per formare il triangolo
-//per ottenere i 4 triangoli con colori diversi, il primo vertice del triangolo deve essere quello dominante
+// per ottenere i 4 triangoli con colori diversi, il primo vertice del triangolo deve essere quello dominante
 
 const std::vector<uint16_t> indices = {
-    0, 1, 2,  // faccia 1 → colore rosso (provoking vertex 0)
-    1, 3, 2,  // faccia 2 → colore verde (provoking vertex 1)
-    2, 3, 0,  // faccia 3 → colore blu   (provoking vertex 2)
-    3, 1, 0   // faccia 4 → colore giallo (provoking vertex 3)
+    0, 1, 2, // faccia 1 → colore rosso (provoking vertex 0)
+    1, 3, 2, // faccia 2 → colore verde (provoking vertex 1)
+    2, 3, 0, // faccia 3 → colore blu   (provoking vertex 2)
+    3, 1, 0  // faccia 4 → colore giallo (provoking vertex 3)
 };
 struct QueueFamilyIndices
 {
@@ -618,10 +617,17 @@ private:
             // se non è un problema l'uso di energia, possiamo usare questa modalità
             if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
             {
+                std::cout << "Using VK_PRESENT_MODE_MAILBOX_KHR" << std::endl;
+                return availablePresentMode;
+            }
+            if (availablePresentMode == VK_PRESENT_MODE_FIFO_RELAXED_KHR)
+            {
+                std::cout << "Using VK_PRESENT_MODE_FIFO_RELAXED_KHR" << std::endl;
                 return availablePresentMode;
             }
         }
         // questa modalità è sempre disponibile, quindi la usiamo come fallback
+        std::cout << "Using VK_PRESENT_MODE_FIFO_KHR" << std::endl;
         return VK_PRESENT_MODE_FIFO_KHR;
     }
 
@@ -668,13 +674,20 @@ private:
         // ora che abbiamo scelto le dimensioni della swap chain, dobbiamo aggiungere altri parametri che ci servono per la creazione della swap chain
         // iniziando dal numero di immagini della swap chain, abbiamo un minimo ed un massimo (entrambi diversi da 0, perché lo 0 indica la mancanza di massimo)
         // in questo caso usiamo il numero minimo di immagini, ma è sempre meglio usare il numero di immagini richieste + 1, così da velocizzare i rendering delle immagini in successione
-        uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
+        uint32_t imageCount;
+        if (presentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+        {
+            imageCount = swapChainSupport.capabilities.minImageCount + 1;
+        }
+        else
+        {
+            imageCount = swapChainSupport.capabilities.minImageCount + 2;
+        }
         // ora dobbiamo assicurarci che il numero di immagini non superi il numero massimo di immagini supportate dal dispositivo fisico
         if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount)
         {
             imageCount = swapChainSupport.capabilities.maxImageCount;
         }
-
         // come è solito in vulkan, dobbiamo usare uno struct per specificare i parametri della swap chain
         VkSwapchainCreateInfoKHR createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -1315,10 +1328,10 @@ private:
 
     void updateUniformBuffer(const uint32_t frame)
     {
-        //per rendere il triangolo animato, dobbiamo aggiornare la matrice di trasformazione ogni frame
-        //  per farlo usiamo la funzione std::chrono::high_resolution_clock::now() che ci permette di ottenere il tempo attuale
-        //  e la funzione std::chrono::duration<float>(currentTime - previousTime).count() che ci permette di calcolare il delta time
-        //  così da rendere il triangolo animato in modo fluido e non a scatti
+        // per rendere il triangolo animato, dobbiamo aggiornare la matrice di trasformazione ogni frame
+        //   per farlo usiamo la funzione std::chrono::high_resolution_clock::now() che ci permette di ottenere il tempo attuale
+        //   e la funzione std::chrono::duration<float>(currentTime - previousTime).count() che ci permette di calcolare il delta time
+        //   così da rendere il triangolo animato in modo fluido e non a scatti
         auto currentTime = std::chrono::high_resolution_clock::now();
 
         float deltaTime = std::chrono::duration<float>(currentTime - previousTime).count();

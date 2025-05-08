@@ -624,10 +624,17 @@ private:
             // se non è un problema l'uso di energia, possiamo usare questa modalità
             if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
             {
+                std::cout << "Using VK_PRESENT_MODE_MAILBOX_KHR" << std::endl;
+                return availablePresentMode;
+            }
+            if (availablePresentMode == VK_PRESENT_MODE_FIFO_RELAXED_KHR)
+            {
+                std::cout << "Using VK_PRESENT_MODE_FIFO_RELAXED_KHR" << std::endl;
                 return availablePresentMode;
             }
         }
         // questa modalità è sempre disponibile, quindi la usiamo come fallback
+        std::cout << "Using VK_PRESENT_MODE_FIFO_KHR" << std::endl;
         return VK_PRESENT_MODE_FIFO_KHR;
     }
 
@@ -674,7 +681,15 @@ private:
         // ora che abbiamo scelto le dimensioni della swap chain, dobbiamo aggiungere altri parametri che ci servono per la creazione della swap chain
         // iniziando dal numero di immagini della swap chain, abbiamo un minimo ed un massimo (entrambi diversi da 0, perché lo 0 indica la mancanza di massimo)
         // in questo caso usiamo il numero minimo di immagini, ma è sempre meglio usare il numero di immagini richieste + 1, così da velocizzare i rendering delle immagini in successione
-        uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
+        uint32_t imageCount;
+        if (presentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+        {
+            imageCount = swapChainSupport.capabilities.minImageCount + 1;
+        }
+        else
+        {
+            imageCount = swapChainSupport.capabilities.minImageCount + 2;
+        }
         // ora dobbiamo assicurarci che il numero di immagini non superi il numero massimo di immagini supportate dal dispositivo fisico
         if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount)
         {
@@ -1339,14 +1354,14 @@ private:
         // applicheremo le trasformazioni a esso
         struct MyCamera camera{};
         camera.pos = glm::vec3(0.0f, 0.0f, 2.0f);                                          // posizione della camera
-        camera.target = glm::vec3(0.0f, 0.0f, 0.0f);                                    // targetdella camera
+        camera.target = glm::vec3(0.0f, 0.0f, 0.0f);                                       // targetdella camera
         camera.up = glm::vec3(0.0f, 1.0f, 0.0f);                                           // vettore up della camera
         glm::mat4 rotation = glm::rotate(glm::mat4(), angle, glm::vec3(0.0f, 0.5f, 0.0f)); // matrice di rotazione
         // matrice di rotazione
         struct UniformBufferObject ubo{};
-        ubo.transform = glm::scale(glm::mat4(), glm::vec3(0.5f, 0.5f, 0.5f));                                                 // identità
-        //ora applichiamo la rotazione alla matrice della camera
-        ubo.view = glm::lookAt(camera.pos, camera.target, camera.up) * rotation;                                           // matrice di vista della camera
+        ubo.transform = glm::scale(glm::mat4(), glm::vec3(0.5f, 0.5f, 0.5f)); // identità
+        // ora applichiamo la rotazione alla matrice della camera
+        ubo.view = glm::lookAt(camera.pos, camera.target, camera.up) * rotation;                                              // matrice di vista della camera
         ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f); // proiezione prospettica
         memcpy(uniformBuffersMapped[frame], &ubo, sizeof(ubo));                                                               // copiamo i dati nel buffer
     }

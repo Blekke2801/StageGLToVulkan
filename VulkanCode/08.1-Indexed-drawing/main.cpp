@@ -79,7 +79,7 @@ struct Vertex
         // come sopra, ma per il colore
         attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
         attributeDescriptions[1].offset = offsetof(Vertex, color);
-        
+
         return attributeDescriptions;
     }
 };
@@ -132,13 +132,13 @@ static std::vector<char> readFile(const std::string &filename)
     // il puntatore alla fine del file è un long long, quindi dobbiamo convertirlo in un size_t (che è un unsigned int)
     size_t fileSize = (size_t)file.tellg();
     std::vector<char> buffer(fileSize);
-    
+
     // dopo aver allocato la memoria necesssaria, possiamo finalmente andare all'inizio del file e leggerlo
     file.seekg(0);
     file.read(buffer.data(), fileSize);
-    
+
     file.close();
-    
+
     return buffer;
 }
 
@@ -397,6 +397,9 @@ private:
         {
             throw std::runtime_error("failed to find a suitable GPU!");
         }
+        VkPhysicalDeviceProperties deviceProperties;
+        vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
+        std::cout << "GPU found: " << deviceProperties.deviceName << std::endl;
     }
 
     bool isDeviceSuitable(VkPhysicalDevice device)
@@ -611,6 +614,11 @@ private:
                 std::cout << "Using VK_PRESENT_MODE_MAILBOX_KHR" << std::endl;
                 return availablePresentMode;
             }
+            if (availablePresentMode == VK_PRESENT_MODE_FIFO_RELAXED_KHR)
+            {
+                std::cout << "Using VK_PRESENT_MODE_FIFO_RELAXED_KHR" << std::endl;
+                return availablePresentMode;
+            }
         }
         // questa modalità è sempre disponibile, quindi la usiamo come fallback
         std::cout << "Using VK_PRESENT_MODE_FIFO_KHR" << std::endl;
@@ -660,7 +668,15 @@ private:
         // ora che abbiamo scelto le dimensioni della swap chain, dobbiamo aggiungere altri parametri che ci servono per la creazione della swap chain
         // iniziando dal numero di immagini della swap chain, abbiamo un minimo ed un massimo (entrambi diversi da 0, perché lo 0 indica la mancanza di massimo)
         // in questo caso usiamo il numero minimo di immagini, ma è sempre meglio usare il numero di immagini richieste + 1, così da velocizzare i rendering delle immagini in successione
-        uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
+        uint32_t imageCount;
+        if (presentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+        {
+            imageCount = swapChainSupport.capabilities.minImageCount + 1;
+        }
+        else
+        {
+            imageCount = swapChainSupport.capabilities.minImageCount + 2;
+        }
         // ora dobbiamo assicurarci che il numero di immagini non superi il numero massimo di immagini supportate dal dispositivo fisico
         if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount)
         {
@@ -1280,10 +1296,10 @@ private:
 
     void updateUniformBuffer(const uint32_t frame)
     {
-        //per rendere il triangolo animato, dobbiamo aggiornare la matrice di trasformazione ogni frame
-        //  per farlo usiamo la funzione std::chrono::high_resolution_clock::now() che ci permette di ottenere il tempo attuale
-        //  e la funzione std::chrono::duration<float>(currentTime - previousTime).count() che ci permette di calcolare il delta time
-        //  così da rendere il triangolo animato in modo fluido e non a scatti
+        // per rendere il triangolo animato, dobbiamo aggiornare la matrice di trasformazione ogni frame
+        //   per farlo usiamo la funzione std::chrono::high_resolution_clock::now() che ci permette di ottenere il tempo attuale
+        //   e la funzione std::chrono::duration<float>(currentTime - previousTime).count() che ci permette di calcolare il delta time
+        //   così da rendere il triangolo animato in modo fluido e non a scatti
         auto currentTime = std::chrono::high_resolution_clock::now();
 
         float deltaTime = std::chrono::duration<float>(currentTime - previousTime).count();

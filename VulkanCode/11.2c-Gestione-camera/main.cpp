@@ -730,6 +730,11 @@ private:
                 std::cout << "Using VK_PRESENT_MODE_MAILBOX_KHR" << std::endl;
                 return availablePresentMode;
             }
+            if (availablePresentMode == VK_PRESENT_MODE_FIFO_RELAXED_KHR)
+            {
+                std::cout << "Using VK_PRESENT_MODE_FIFO_RELAXED_KHR" << std::endl;
+                return availablePresentMode;
+            }
         }
         // questa modalità è sempre disponibile, quindi la usiamo come fallback
         std::cout << "Using VK_PRESENT_MODE_FIFO_KHR" << std::endl;
@@ -779,7 +784,15 @@ private:
         // ora che abbiamo scelto le dimensioni della swap chain, dobbiamo aggiungere altri parametri che ci servono per la creazione della swap chain
         // iniziando dal numero di immagini della swap chain, abbiamo un minimo ed un massimo (entrambi diversi da 0, perché lo 0 indica la mancanza di massimo)
         // in questo caso usiamo il numero minimo di immagini, ma è sempre meglio usare il numero di immagini richieste + 1, così da velocizzare i rendering delle immagini in successione
-        uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
+        uint32_t imageCount;
+        if (presentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+        {
+            imageCount = swapChainSupport.capabilities.minImageCount + 1;
+        }
+        else
+        {
+            imageCount = swapChainSupport.capabilities.minImageCount + 2;
+        }
         // ora dobbiamo assicurarci che il numero di immagini non superi il numero massimo di immagini supportate dal dispositivo fisico
         if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount)
         {
