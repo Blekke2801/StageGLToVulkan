@@ -265,11 +265,13 @@ private:
         {
         case GLFW_KEY_UP:
             // spostiamo la camera in avanti nella direzione in cui sta guardando
-            camera.pos[2] -= _speed * deltaTime;
+            camera.pos -= direction * _speed * deltaTime;
+            camera.target -= direction * _speed * deltaTime;
             break;
         case GLFW_KEY_DOWN:
             // spostiamo la camera indietro nella direzione opposta a quella in cui sta guardando
-            camera.pos[2] += _speed * deltaTime;
+            camera.pos += direction * _speed * deltaTime;
+            camera.target += direction * _speed * deltaTime;
             break;
         case GLFW_KEY_LEFT:
             // spostiamo la camera a sinistra nella direzione perpendicolare alla direzione in cui sta guardando
@@ -403,7 +405,7 @@ private:
     {
         VkApplicationInfo appInfo{};
         appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        appInfo.pApplicationName = "Hello Triangle";
+        appInfo.pApplicationName = "Informatica Grafica";
         appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
         appInfo.pEngineName = "No Engine";
         appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);

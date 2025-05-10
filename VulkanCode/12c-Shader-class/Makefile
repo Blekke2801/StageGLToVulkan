@@ -1,5 +1,5 @@
 # $@ nome del target
-# @^ lista delle dipendenze
+# $^ lista delle dipendenze
 
 CC = g++
 CCFLAGS = -O3 -s -DNDEBUG
@@ -21,16 +21,20 @@ else
 	LIBS += -lvulkan
 endif
 
-OBJS = main.o 
+OBJS = main.o  # myshaderclass.o shaderclass.o
 
-triangolo.exe : $(OBJS)
+classe-shader.exe : $(OBJS)
 	$(CC) $(CCFLAGS) $^ $(LIBDIRS) $(LIBS) -o $@
 
 main.o : main.cpp
 	$(CC) -c $(CCFLAGS) $(INCLUDEDIRS) $? -o $@
 
-.PHONY clean:
+# shaderclass.o : shaderclass.cpp
+# 	$(CC) -c $(CCFLAGS) $(INCLUDEDIRS) $? -o $@
+
+# myshaderclass.o : myshaderclass.cpp
+# 	$(CC) -c $(CCFLAGS) $(INCLUDEDIRS) $? -o $@
+
+.PHONY: clean
 clean:
-	rm *.o *.exe
-
-
+	rm -f *.o *.exe

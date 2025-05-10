@@ -1,6 +1,7 @@
 #version 450
 
-layout(location = 0) in vec3 fragColor;
+//serve flat per ottenere il flat shading
+layout(location = 0) in flat vec3 fragColor;
 
 layout(location = 0) out vec4 outColor;
 

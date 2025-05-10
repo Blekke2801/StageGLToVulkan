@@ -234,7 +234,6 @@ private:
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         if (glfwRawMouseMotionSupported())
             glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
-        glfwSetCursorPos(window, 0, 0);
     }
 
     static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
@@ -251,6 +250,7 @@ private:
             case GLFW_KEY_DOWN:
             case GLFW_KEY_LEFT:
             case GLFW_KEY_RIGHT:
+            case GLFW_KEY_SPACE:
                 cameraControls(key);
                 break;
             default:
@@ -262,8 +262,8 @@ private:
     static void mouse_callback(GLFWwindow *window, double xpos, double ypos)
     {
         static bool firstMouse = true;
-        static float lastX = WIDTH / 2.0f;
-        static float lastY = HEIGHT / 2.0f;
+        static float lastX;
+        static float lastY;
 
         if (firstMouse)
         {
@@ -282,8 +282,7 @@ private:
         float sensitivity = 0.1f;
         xoffset *= sensitivity;
         yoffset *= sensitivity;
-
-        camera.yaw += xoffset;
+        camera.yaw = fmod(camera.yaw + xoffset + 360.0f, 360.0f); // questo in modo da tenere lo yaw nel range [0, 360]
         camera.pitch += yoffset;
 
         // Limita il pitch per evitare che la camera si ribalti
@@ -297,7 +296,7 @@ private:
         direction.x = cos(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
         direction.y = sin(glm::radians(camera.pitch));
         direction.z = sin(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
-        camera.target = glm::normalize(direction);
+        camera.target = camera.pos + glm::normalize(direction);
     }
 
     static void cameraControls(int key)
@@ -319,11 +318,13 @@ private:
         {
         case GLFW_KEY_UP:
             // spostiamo la camera in avanti nella direzione in cui sta guardando
-            camera.pos[2] -= _speed * deltaTime;
+            camera.pos += direction * _speed * deltaTime;
+            camera.target += direction * _speed * deltaTime;
             break;
         case GLFW_KEY_DOWN:
             // spostiamo la camera indietro nella direzione opposta a quella in cui sta guardando
-            camera.pos[2] += _speed * deltaTime;
+            camera.pos -= direction * _speed * deltaTime;
+            camera.target -= direction * _speed * deltaTime;
             break;
         case GLFW_KEY_LEFT:
             // spostiamo la camera a sinistra nella direzione perpendicolare alla direzione in cui sta guardando
@@ -457,7 +458,7 @@ private:
     {
         VkApplicationInfo appInfo{};
         appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-        appInfo.pApplicationName = "Hello Triangle";
+        appInfo.pApplicationName = "Informatica Grafica";
         appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
         appInfo.pEngineName = "No Engine";
         appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -1442,8 +1443,7 @@ private:
 
         // matrice di rotazione
         struct UniformBufferObject ubo{};
-        ubo.transform = glm::scale(glm::mat4(), glm::vec3(0.5f, 0.5f, 0.5f)); // identità
-        // ora applichiamo la rotazione alla matrice della camera
+        ubo.transform = glm::scale(glm::mat4(), glm::vec3(0.5f, 0.5f, 0.5f));                                 // identità
         ubo.view = glm::lookAt(camera.pos, camera.target, camera.up);                                                         // matrice di vista della camera
         ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f); // proiezione prospettica
         memcpy(uniformBuffersMapped[frame], &ubo, sizeof(ubo));

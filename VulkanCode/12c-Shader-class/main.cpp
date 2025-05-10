@@ -10,7 +10,7 @@
 #include <glm/mat4x4.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-
+// #include "myshaderclass.h"
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
@@ -38,16 +38,26 @@ const uint32_t HEIGHT = 768;
 
 const uint32_t MAX_FRAMES_IN_FLIGHT = 2; // numero di frame in volo
 auto previousTime = std::chrono::high_resolution_clock::now();
-
 struct UniformBufferObject
 {
     glm::mat4 transform;
     glm::mat4 view;
     glm::mat4 proj;
 };
+// ho creato una mia struttura per la camera
+struct MyCamera
+{
+    glm::vec3 pos;
+    glm::vec3 target;
+    glm::vec3 up;
+    float yaw;
+    float pitch;
+};
+
 struct Vertex
 {
     glm::vec3 pos;
+
     glm::vec3 color;
     // vulkan ha bisogno di sapere come interpretare i dati che gli passiamo, quindi dobbiamo specificare il formato dei dati
     static VkVertexInputBindingDescription getBindingDescription()
@@ -87,21 +97,56 @@ struct Vertex
 // essendo che in vulkan l'origine è in alto a sinistra e non in basso a sinistra come in opengl, dobbiamo invertire la y
 // le opzioni sono 3, nella shader, qui, oppure possiamo ribaltare la viewport, ribalteremo la viewport in modo da non dover modificare lo shader o i singoli vertici
 const std::vector<Vertex> vertices = {
-    {{-1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}},
-    {{0.0f, -1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-    {{0.0f, 1.0f, -1.0f}, {1.0f, 0.0f, 0.0f}},
+    {{-1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}},
+    {{1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}},
+    {{-1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}},
+    {{1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}},
+    {{1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}},
+    {{-1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}},
 
-    {{0.0f, -1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}},
+    {{1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
     {{1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}},
-    {{0.0f, 1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}},
+    {{1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+    {{1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}},
+    {{1.0f, 1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}},
+    {{1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
 
-    {{-1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}},
-    {{0.0f, 1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}},
-    {{1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}},
+    {{-1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
+    {{1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
+    {{-1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}},
+    {{1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
+    {{1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}},
+    {{-1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}},
 
-    {{0.0f, -1.0f, 0.0f}, {1.0f, 1.0f, 0.0f}},
+    {{-1.0f, -1.0f, 1.0f}, {1.0f, 1.0f, 0.0f}},
+    {{-1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 0.0f}},
     {{-1.0f, -1.0f, -1.0f}, {1.0f, 1.0f, 0.0f}},
-    {{1.0f, -1.0f, -1.0f}, {1.0f, 1.0f, 0.0f}}};
+    {{-1.0f, -1.0f, -1.0f}, {1.0f, 1.0f, 0.0f}},
+    {{-1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 0.0f}},
+    {{-1.0f, 1.0f, -1.0f}, {1.0f, 1.0f, 0.0f}},
+
+    {{-1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 1.0f}},
+    {{-1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 1.0f}},
+    {{1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 1.0f}},
+    {{1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 1.0f}},
+    {{-1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 1.0f}},
+    {{1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 1.0f}},
+
+    {{-1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 1.0f}},
+    {{-1.0f, 1.0f, -1.0f}, {1.0f, 0.0f, 1.0f}},
+    {{1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 1.0f}},
+    {{1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 1.0f}},
+    {{-1.0f, 1.0f, -1.0f}, {1.0f, 0.0f, 1.0f}},
+    {{1.0f, 1.0f, -1.0f}, {1.0f, 0.0f, 1.0f}},
+};
+
+// gli indici servono a dire quali vertici usare per formare il triangolo
+// per ottenere i 4 triangoli con colori diversi, il primo vertice del triangolo deve essere quello dominante
+// rispetto a openGL, in vulkan l'ordine degli indici è invertito, quindi dobbiamo invertire gli indici
+const std::vector<uint32_t> indices = {};
+
+glm::mat4 cubeTransform = glm::mat4(1.0f); // matrice di trasformazione del cubo
+
 struct QueueFamilyIndices
 {
     std::optional<uint32_t> graphicsFamily;
@@ -143,6 +188,11 @@ static std::vector<char> readFile(const std::string &filename)
 }
 
 // questo struct servirà a passare i dati alla shader, in questo caso la matrice di proiezione e la matrice di vista
+struct MyCamera camera{
+    glm::vec3(0.0f, 0.0f, 4.0f), // posizione della camera
+    glm::vec3(0.0f, 0.0f, 0.0f), // target della camera
+    glm::vec3(0.0f, 1.0f, 0.0f), // vettore up della camera
+    0.0f, -90.0f};               // angoli di yaw e pitch della camera
 
 class HelloTriangleApplication
 {
@@ -187,6 +237,8 @@ private:
     std::vector<VkBuffer> uniformBuffers;             // buffer uniformi Vulkan
     std::vector<VkDeviceMemory> uniformBuffersMemory; // memoria dei buffer uniformi Vulkan
     std::vector<void *> uniformBuffersMapped;         // puntatori ai buffer uniformi Vulkan
+    VkBuffer indexBuffer;                             // buffer degli indici Vulkan
+    VkDeviceMemory indexBufferMemory;                 // memoria del buffer degli indici Vulkan
 
     // sto usando dei vettori in caso ci siano dei frame aggiuntivi, ma essendo che non ci sono, si puà usare anche un solo elemento
     // i vettori adesso sono solo per scopo didattico, in un'applicazione reale si userebbero i frame in volo per gestire più frame contemporaneamente
@@ -195,7 +247,6 @@ private:
     std::vector<VkFence> inFlightFences;
 
     uint32_t currentFrame = 0; // frame corrente
-
     void initWindow()
     {
         glfwInit();
@@ -204,16 +255,26 @@ private:
         // dobbiamo specificare che vogliamo usare vulkan con la seguente riga
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-        // creiamo la finestra di dimensioni WIDTH e HEIGHT con il titolo "Vulkan" (gli ultimi 2 parametri li ignoriamo che non ci interessano)
-        window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+        // creiamo la finestra di dimensioni WIDTH e HEIGHT con il titolo "Vulkan"
+        auto monitor = glfwGetPrimaryMonitor();
+        // per avere la finestra in finstra senza bordi, dobbiamo specificare che vogliamo una finestra massimizzata e senza decorazioni
+        glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
+        glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+
+        auto mode = glfwGetVideoMode(monitor);
+        window = glfwCreateWindow(mode->width, mode->height, "Vulkan", monitor, nullptr);
 
         // dobbiamo specificare che vogliamo usare dei tasti della tastiera per gestire gli input
         glfwSetKeyCallback(window, key_callback);
+        glfwSetCursorPosCallback(window, mouse_callback);
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        if (glfwRawMouseMotionSupported())
+            glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
     }
 
     static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
     {
-        if (action == GLFW_PRESS)
+        if (action == GLFW_PRESS || action == GLFW_REPEAT)
         {
             switch (key)
             {
@@ -221,12 +282,137 @@ private:
                 std::cout << "Escape pressed" << std::endl;
                 glfwSetWindowShouldClose(window, true);
                 break;
+            case GLFW_KEY_UP:
+            case GLFW_KEY_DOWN:
+            case GLFW_KEY_LEFT:
+            case GLFW_KEY_RIGHT:
+            case GLFW_KEY_SPACE:
+                cameraControls(key);
+                break;
+            case GLFW_KEY_W:
+            case GLFW_KEY_A:
+            case GLFW_KEY_S:
+            case GLFW_KEY_D:
+                cubeControls(key);
+                break;
             default:
                 break;
             }
         }
     }
 
+    static void mouse_callback(GLFWwindow *window, double xpos, double ypos)
+    {
+        static bool firstMouse = true;
+        static float lastX;
+        static float lastY;
+
+        if (firstMouse)
+        {
+            lastX = xpos;
+            lastY = ypos;
+            firstMouse = false;
+            return;
+        }
+
+        float xoffset = xpos - lastX;
+        float yoffset = lastY - ypos; // invertito per l'asse Y
+
+        lastX = xpos;
+        lastY = ypos;
+
+        float sensitivity = 0.1f;
+        xoffset *= sensitivity;
+        yoffset *= sensitivity;
+        camera.yaw = fmod(camera.yaw + xoffset + 360.0f, 360.0f); // questo in modo da tenere lo yaw nel range [0, 360]
+        camera.pitch += yoffset;
+
+        // Limita il pitch per evitare che la camera si ribalti
+        if (camera.pitch > 89.0f)
+            camera.pitch = 89.0f;
+        if (camera.pitch < -89.0f)
+            camera.pitch = -89.0f;
+
+        // Calcola la nuova direzione
+        glm::vec3 direction;
+        direction.x = cos(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
+        direction.y = sin(glm::radians(camera.pitch));
+        direction.z = sin(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
+        camera.target = camera.pos + glm::normalize(direction);
+    }
+
+    static void cameraControls(int key)
+    {
+        // sta volta, le trasformazioni verranno applicate alla camera, quindi dovremo modificare la "view"
+        // per rendere il triangolo animato, dobbiamo aggiornare la matrice di trasformazione ogni frame
+        //   per farlo usiamo la funzione std::chrono::high_resolution_clock::now() che ci permette di ottenere il tempo attuale
+        //   e la funzione std::chrono::duration<float>(currentTime - previousTime).count() che ci permette di calcolare il delta time
+        //   così da rendere il triangolo animato in modo fluido e non a scatti
+        auto currentTime = std::chrono::high_resolution_clock::now();
+
+        float deltaTime = std::chrono::duration<float>(currentTime - previousTime).count();
+        previousTime = currentTime;
+        float _speed = 0.05f;
+        // calcola il vettore perpendicolare alla direzione della camera
+        glm::vec3 direction = glm::normalize(camera.target - camera.pos);
+        glm::vec3 right = glm::normalize(glm::cross(direction, camera.up));
+        switch (key)
+        {
+        case GLFW_KEY_UP:
+            // spostiamo la camera in avanti nella direzione in cui sta guardando
+            camera.pos += direction * _speed * deltaTime;
+            camera.target += direction * _speed * deltaTime;
+            break;
+        case GLFW_KEY_DOWN:
+            // spostiamo la camera indietro nella direzione opposta a quella in cui sta guardando
+            camera.pos -= direction * _speed * deltaTime;
+            camera.target -= direction * _speed * deltaTime;
+            break;
+        case GLFW_KEY_LEFT:
+            // spostiamo la camera a sinistra nella direzione perpendicolare alla direzione in cui sta guardando
+            camera.pos -= right * _speed * deltaTime;
+            camera.target -= right * _speed * deltaTime;
+            break;
+        case GLFW_KEY_RIGHT:
+            // spostiamo la camera a destra nella direzione opposta a quella in cui sta guardando
+            camera.pos += right * _speed * deltaTime;
+            camera.target += right * _speed * deltaTime;
+            break;
+        case GLFW_KEY_SPACE:
+            // reset della camera
+            camera.pos = glm::vec3(0.0f, 0.0f, 4.0f);
+            camera.target = glm::vec3(0.0f, 0.0f, 0.0f);
+            camera.up = glm::vec3(0.0f, 1.0f, 0.0f);
+            camera.yaw = 0.0f;
+            camera.pitch = -90.0f;
+            break;
+        }
+    }
+
+    static void cubeControls(int key)
+    {
+        float _speed = 10.0f;
+
+        switch (key)
+        {
+        case GLFW_KEY_W:
+            // ruotiamo il cubo in avanti
+            cubeTransform = glm::rotate(cubeTransform, glm::radians(_speed), glm::vec3(1.0f, 0.0f, 0.0f));
+            break;
+        case GLFW_KEY_A:
+            // ruotiamo il cubo a sinistra
+            cubeTransform = glm::rotate(cubeTransform, glm::radians(_speed), glm::vec3(0.0f, 1.0f, 0.0f));
+            break;
+        case GLFW_KEY_S:
+            // ruotiamo il cubo indietro
+            cubeTransform = glm::rotate(cubeTransform, -glm::radians(_speed), glm::vec3(1.0f, 0.0f, 0.0f));
+            break;
+        case GLFW_KEY_D:
+            // ruotiamo il cubo a destra
+            cubeTransform = glm::rotate(cubeTransform, -glm::radians(_speed), glm::vec3(0.0f, 1.0f, 0.0f));
+            break;
+        }
+    }
     void initVulkan()
     {
         createInstance();
@@ -244,6 +430,7 @@ private:
         createUniformBuffers();
         createDescriptorPool();
         createDescriptorSets();
+        // createIndexBuffer();
         createCommandBuffers();
         createSyncObjects();
     }
@@ -265,6 +452,13 @@ private:
     void cleanup()
     {
         cleanupSwapChain();
+
+        // vkDestroyBuffer(device, indexBuffer, nullptr);
+        // vkFreeMemory(device, indexBufferMemory, nullptr);
+
+        vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+
+        vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
         for (size_t i = 0; i < uniformBuffers.size(); i++)
         {
@@ -397,9 +591,6 @@ private:
         {
             throw std::runtime_error("failed to find a suitable GPU!");
         }
-        VkPhysicalDeviceProperties deviceProperties;
-        vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
-        std::cout << "GPU found: " << deviceProperties.deviceName << std::endl;
     }
 
     bool isDeviceSuitable(VkPhysicalDevice device)
@@ -1235,7 +1426,10 @@ private:
 
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
-        vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+        // ora dobbiamo specificare il buffer di indici
+        // vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+
+        vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0); // disegniamo i vertici
 
         // ora che abbiamo finito di disegnare, possiamo finalmente terminare il render pass
         vkCmdEndRenderPass(commandBuffer);
@@ -1278,6 +1472,30 @@ private:
         vkFreeMemory(device, stagingBufferMemory, nullptr); // distruggiamo la memoria del buffer di staging
     }
 
+    // in caso di immagini più complesse, come un semplice rettangolo, formato da 2 triangoli, ci servirà un buffer di indici
+    // così da evitare ridondanza ripetendo gli stessi vertici più volte
+    // la creazione del buffer di indici è simile a quella del buffer di vertici, ma con alcune differenze
+    void createIndexBuffer()
+    {
+        VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
+
+        VkBuffer stagingBuffer;
+        VkDeviceMemory stagingBufferMemory;
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+        void *data;
+        vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
+        memcpy(data, indices.data(), (size_t)bufferSize);
+        vkUnmapMemory(device, stagingBufferMemory);
+
+        // la differenza principale è che il buffer di indici deve essere creato con VK_BUFFER_USAGE_INDEX_BUFFER_BIT
+        createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
+
+        copyBuffer(stagingBuffer, indexBuffer, bufferSize);
+
+        vkDestroyBuffer(device, stagingBuffer, nullptr);
+        vkFreeMemory(device, stagingBufferMemory, nullptr);
+    }
     void createUniformBuffers()
     {
         VkDeviceSize bufferSize = sizeof(UniformBufferObject);
@@ -1296,27 +1514,13 @@ private:
 
     void updateUniformBuffer(const uint32_t frame)
     {
-        // per rendere il triangolo animato, dobbiamo aggiornare la matrice di trasformazione ogni frame
-        //   per farlo usiamo la funzione std::chrono::high_resolution_clock::now() che ci permette di ottenere il tempo attuale
-        //   e la funzione std::chrono::duration<float>(currentTime - previousTime).count() che ci permette di calcolare il delta time
-        //   così da rendere il triangolo animato in modo fluido e non a scatti
-        auto currentTime = std::chrono::high_resolution_clock::now();
 
-        float deltaTime = std::chrono::duration<float>(currentTime - previousTime).count();
-        previousTime = currentTime;
-        static float angle = 0.0f;
-        float rotationSpeed = 90.0f; // gradi al secondo
-        angle += glm::radians(rotationSpeed) * deltaTime;
-        // ora creiamo la trasformazione del triangolo, che è una matrice 4x4 che ci permette di ruotare il triangolo attorno ad un asse
-        //  in questo caso usiamo la funzione glm::rotate, che ci permette di ruotare il triangolo attorno ad un asse
-        UniformBufferObject ubo{};
-        glm::mat4 rx = glm::rotate(glm::mat4(), angle, glm::vec3(1.0f, 0.0f, 0.0f));
-        glm::mat4 ry = glm::rotate(glm::mat4(), angle, glm::vec3(0.0f, 1.0f, 0.0f));
-        glm::mat4 scale = glm::scale(glm::mat4(), glm::vec3(0.5f, 0.5f, 0.5f));                                               // scala il triangolo
-        ubo.transform = rx * ry * scale;                                                                                      // la matrice di trasformazione finale è la somma delle 2 matrici
-        ubo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));        // posizione della camera
+        // matrice di rotazione
+        struct UniformBufferObject ubo{};
+        ubo.transform = glm::scale(glm::mat4(), glm::vec3(0.5f, 0.5f, 0.5f)) * cubeTransform;                                 // identità
+        ubo.view = glm::lookAt(camera.pos, camera.target, camera.up);                                                         // matrice di vista della camera
         ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f); // proiezione prospettica
-        memcpy(uniformBuffersMapped[frame], &ubo, sizeof(ubo));                                                               // copiamo i dati nel buffer
+        memcpy(uniformBuffersMapped[frame], &ubo, sizeof(ubo));
     }
 
     // questa funzione ci permette di creare un descriptor pool, che ci serve per allocare i descriptor set
@@ -1529,6 +1733,7 @@ private:
         {
             throw std::runtime_error("failed to acquire swap chain image!");
         }
+
         // ora che abbiamo presentato l'immagine, possiamo passare al frame successivo
         currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     }
