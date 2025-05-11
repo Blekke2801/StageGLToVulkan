@@ -21,7 +21,7 @@ else
 	LIBS += -lvulkan
 endif
 
-OBJS = main.o shaderclass.o
+OBJS = main.o shaderclass.o light.o
 
 classe-shader.exe : $(OBJS)
 	$(CC) $(CCFLAGS) $^ $(LIBDIRS) $(LIBS) -o $@
@@ -32,7 +32,8 @@ main.o : main.cpp
 shaderclass.o : shaderclass.cpp
 	$(CC) -c $(CCFLAGS) $(INCLUDEDIRS) $? -o $@
 
-
+light.o : light.cpp
+	$(CC) -c $(CCFLAGS) $(INCLUDEDIRS) $? -o $@
 .PHONY: clean
 clean:
 	rm -f *.o *.exe

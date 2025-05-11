@@ -18,4 +18,3 @@ for %%f in (%SRC%\*.frag) do (
 )
 
 echo Done!
-pause

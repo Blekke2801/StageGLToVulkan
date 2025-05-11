@@ -11,6 +11,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include "shaderclass.h"
+#include "light.h"
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib>
