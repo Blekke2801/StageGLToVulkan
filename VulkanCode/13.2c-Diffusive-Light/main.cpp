@@ -61,8 +61,8 @@ struct MyCamera
 struct Vertex
 {
     glm::vec3 pos;
-
     glm::vec3 color;
+    glm::vec3 normal; // normale del vertice
     // vulkan ha bisogno di sapere come interpretare i dati che gli passiamo, quindi dobbiamo specificare il formato dei dati
     static VkVertexInputBindingDescription getBindingDescription()
     {
@@ -75,9 +75,9 @@ struct Vertex
     }
 
     // questo invece è per dire come estrarre i dati dai vertici, quindi dobbiamo specificare il formato dei dati e l'offset (cioè la posizione del dato all'interno della struttura)
-    static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions()
+    static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions()
     {
-        std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions{};
+        std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
         attributeDescriptions[0].binding = 0;
         attributeDescriptions[0].location = 0;
         // che formato ha il dato?
@@ -94,56 +94,66 @@ struct Vertex
         attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
         attributeDescriptions[1].offset = offsetof(Vertex, color);
 
+        attributeDescriptions[2].binding = 0;
+        attributeDescriptions[2].location = 2;
+        // come sopra, ma per la normale
+        attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescriptions[2].offset = offsetof(Vertex, normal);
+
+
         return attributeDescriptions;
     }
 };
-// il nostro triangolo è composto da 3 vertici, ognuno con una posizione
-// essendo che in vulkan l'origine è in alto a sinistra e non in basso a sinistra come in opengl, dobbiamo invertire la y
-// le opzioni sono 3, nella shader, qui, oppure possiamo ribaltare la viewport, ribalteremo la viewport in modo da non dover modificare lo shader o i singoli vertici
+// Definizione dei vertici del cubo
 const std::vector<Vertex> vertices = {
-    {{-1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}},
-    {{1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}},
-    {{-1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}},
-    {{1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}},
-    {{1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}},
-    {{-1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}},
+        {{-1.0f,-1.0f, 1.0f}, { 1.0f, 0.0f, 0.0f}, {0,0,1}},
+        {{ 1.0f,-1.0f, 1.0f}, { 1.0f, 0.0f, 0.0f}, {0,0,1}},
+        {{-1.0f, 1.0f, 1.0f}, { 1.0f, 0.0f, 0.0f}, {0,0,1}},
+        {{ 1.0f,-1.0f, 1.0f}, { 1.0f, 0.0f, 0.0f}, {0,0,1}},
+        {{ 1.0f, 1.0f, 1.0f}, { 1.0f, 0.0f, 0.0f}, {0,0,1}},
+        {{-1.0f, 1.0f, 1.0f}, { 1.0f, 0.0f, 0.0f}, {0,0,1}},
 
-    {{1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
-    {{1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}},
-    {{1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
-    {{1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}},
-    {{1.0f, 1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}},
-    {{1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
 
-    {{-1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
-    {{1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
-    {{-1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}},
-    {{1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}},
-    {{1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}},
-    {{-1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}},
+        {{ 1.0f,-1.0f, 1.0f}, { 0.0f, 1.0f, 0.0f}, {1,0,0}},
+        {{ 1.0f,-1.0f,-1.0f}, { 0.0f, 1.0f, 0.0f}, {1,0,0}},
+        {{ 1.0f, 1.0f, 1.0f}, { 0.0f, 1.0f, 0.0f}, {1,0,0}},
+        {{ 1.0f,-1.0f,-1.0f}, { 0.0f, 1.0f, 0.0f}, {1,0,0}},
+        {{ 1.0f, 1.0f,-1.0f}, { 0.0f, 1.0f, 0.0f}, {1,0,0}},
+        {{ 1.0f, 1.0f, 1.0f}, { 0.0f, 1.0f, 0.0f}, {1,0,0}},
 
-    {{-1.0f, -1.0f, 1.0f}, {1.0f, 1.0f, 0.0f}},
-    {{-1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 0.0f}},
-    {{-1.0f, -1.0f, -1.0f}, {1.0f, 1.0f, 0.0f}},
-    {{-1.0f, -1.0f, -1.0f}, {1.0f, 1.0f, 0.0f}},
-    {{-1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 0.0f}},
-    {{-1.0f, 1.0f, -1.0f}, {1.0f, 1.0f, 0.0f}},
 
-    {{-1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 1.0f}},
-    {{-1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 1.0f}},
-    {{1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 1.0f}},
-    {{1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 1.0f}},
-    {{-1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 1.0f}},
-    {{1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 1.0f}},
+        {{-1.0f, 1.0f, 1.0f}, { 0.0f, 0.0f, 1.0f}, {0,1,0}},
+        {{ 1.0f, 1.0f, 1.0f}, { 0.0f, 0.0f, 1.0f}, {0,1,0}},
+        {{-1.0f, 1.0f,-1.0f}, { 0.0f, 0.0f, 1.0f}, {0,1,0}},
+        {{ 1.0f, 1.0f, 1.0f}, { 0.0f, 0.0f, 1.0f}, {0,1,0}},
+        {{ 1.0f, 1.0f,-1.0f}, { 0.0f, 0.0f, 1.0f}, {0,1,0}},
+        {{-1.0f, 1.0f,-1.0f}, { 0.0f, 0.0f, 1.0f}, {0,1,0}},
 
-    {{-1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 1.0f}},
-    {{-1.0f, 1.0f, -1.0f}, {1.0f, 0.0f, 1.0f}},
-    {{1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 1.0f}},
-    {{1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 1.0f}},
-    {{-1.0f, 1.0f, -1.0f}, {1.0f, 0.0f, 1.0f}},
-    {{1.0f, 1.0f, -1.0f}, {1.0f, 0.0f, 1.0f}},
-};
 
+        {{-1.0f,-1.0f, 1.0f}, { 1.0f, 1.0f, 0.0f}, {-1,0,0}},
+        {{-1.0f, 1.0f, 1.0f}, { 1.0f, 1.0f, 0.0f}, {-1,0,0}},
+        {{-1.0f,-1.0f,-1.0f}, { 1.0f, 1.0f, 0.0f}, {-1,0,0}},
+        {{-1.0f,-1.0f,-1.0f}, { 1.0f, 1.0f, 0.0f}, {-1,0,0}},
+        {{-1.0f, 1.0f, 1.0f}, { 1.0f, 1.0f, 0.0f}, {-1,0,0}},
+        {{-1.0f, 1.0f,-1.0f}, { 1.0f, 1.0f, 0.0f}, {-1,0,0}},
+
+
+        {{-1.0f,-1.0f, 1.0f}, { 0.0f, 1.0f, 1.0f}, {0,-1,0}},
+        {{-1.0f,-1.0f,-1.0f}, { 0.0f, 1.0f, 1.0f}, {0,-1,0}},
+        {{ 1.0f,-1.0f, 1.0f}, { 0.0f, 1.0f, 1.0f}, {0,-1,0}},
+        {{ 1.0f,-1.0f, 1.0f}, { 0.0f, 1.0f, 1.0f}, {0,-1,0}},
+        {{-1.0f,-1.0f,-1.0f}, { 0.0f, 1.0f, 1.0f}, {0,-1,0}},
+        {{ 1.0f,-1.0f,-1.0f}, { 0.0f, 1.0f, 1.0f}, {0,-1,0}},
+
+
+        {{-1.0f,-1.0f,-1.0f}, { 1.0f, 0.0f, 1.0f}, {0,0,-1}},
+        {{-1.0f, 1.0f,-1.0f}, { 1.0f, 0.0f, 1.0f}, {0,0,-1}},
+        {{ 1.0f,-1.0f,-1.0f}, { 1.0f, 0.0f, 1.0f}, {0,0,-1}},
+        {{ 1.0f,-1.0f,-1.0f}, { 1.0f, 0.0f, 1.0f}, {0,0,-1}},
+        {{-1.0f, 1.0f,-1.0f}, { 1.0f, 0.0f, 1.0f}, {0,0,-1}},
+        {{ 1.0f, 1.0f,-1.0f}, { 1.0f, 0.0f, 1.0f}, {0,0,-1}},
+
+    };
 // gli indici servono a dire quali vertici usare per formare il triangolo
 // per ottenere i 4 triangoli con colori diversi, il primo vertice del triangolo deve essere quello dominante
 // rispetto a openGL, in vulkan l'ordine degli indici è invertito, quindi dobbiamo invertire gli indici

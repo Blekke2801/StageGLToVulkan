@@ -131,7 +131,7 @@ bool ShaderClass::compileAllIfNeeded()
     }
     if (!allCompiled)
     {
-        std::system("start cmd /C compile.bat");
+        std::system("start cmd /K compile.bat");
         //essendo che l'applicazione è da riavviare per forza, non ha senso continuare
         std::cerr << "[INFO] Shader compilati. Riavvia manualmente l'applicazione." << std::endl;
         throw std::runtime_error("riavvio necessario per la compilazione delle shader");
