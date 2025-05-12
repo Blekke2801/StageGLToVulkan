@@ -39,14 +39,29 @@ const uint32_t HEIGHT = 768;
 
 const uint32_t MAX_FRAMES_IN_FLIGHT = 2; // numero di frame in volo
 auto previousTime = std::chrono::high_resolution_clock::now();
-//essendo che ora abbiamo anche la luce, dobbiamo aggiungere i suoi parametri al uniform buffer object
+// essendo che ora abbiamo anche la luce, dobbiamo aggiungere i suoi parametri al uniform buffer object
 struct UniformBufferObject
 {
-    glm::mat4 transform;
-    glm::mat4 view;
-    glm::mat4 proj;
-    glm::vec3 ambientColor; //colore della luce ambientale
-    float ambientLightIntensity; //intensità della luce ambientale
+    struct SceneMatrices // struttura per le matrici di scena
+    {
+        glm::mat4 model;
+        glm::mat4 view;
+        glm::mat4 proj;
+    } sMatrices;
+    struct AmbientLightStruct // struttura per la luce ambientale
+    {
+        glm::vec3 color;          // colore della luce ambientale
+        float intensity;          // intensità della luce ambientale
+    } aLight;                     // luce ambientale
+    struct DirectionalLightStruct // struttura per la luce direzionale
+    {
+        glm::vec3 color;
+        glm::vec3 direction;
+    } dirLight;
+    struct DiffusiveLightStruct // struttura per la luce diffusa
+    {
+        alignas(16) float intensity; //essendo che la struttura deve essere allineata a 16 byte, dobbiamo usare alignas(16)
+    } diffLight;
 };
 // ho creato una mia struttura per la camera
 struct MyCamera
@@ -100,60 +115,54 @@ struct Vertex
         attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
         attributeDescriptions[2].offset = offsetof(Vertex, normal);
 
-
         return attributeDescriptions;
     }
 };
 // Definizione dei vertici del cubo
 const std::vector<Vertex> vertices = {
-        {{-1.0f,-1.0f, 1.0f}, { 1.0f, 0.0f, 0.0f}, {0,0,1}},
-        {{ 1.0f,-1.0f, 1.0f}, { 1.0f, 0.0f, 0.0f}, {0,0,1}},
-        {{-1.0f, 1.0f, 1.0f}, { 1.0f, 0.0f, 0.0f}, {0,0,1}},
-        {{ 1.0f,-1.0f, 1.0f}, { 1.0f, 0.0f, 0.0f}, {0,0,1}},
-        {{ 1.0f, 1.0f, 1.0f}, { 1.0f, 0.0f, 0.0f}, {0,0,1}},
-        {{-1.0f, 1.0f, 1.0f}, { 1.0f, 0.0f, 0.0f}, {0,0,1}},
+    {{-1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {0, 0, 1}},
+    {{1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {0, 0, 1}},
+    {{-1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {0, 0, 1}},
+    {{1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {0, 0, 1}},
+    {{1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {0, 0, 1}},
+    {{-1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {0, 0, 1}},
 
+    {{1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1, 0, 0}},
+    {{1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1, 0, 0}},
+    {{1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1, 0, 0}},
+    {{1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1, 0, 0}},
+    {{1.0f, 1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1, 0, 0}},
+    {{1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1, 0, 0}},
 
-        {{ 1.0f,-1.0f, 1.0f}, { 0.0f, 1.0f, 0.0f}, {1,0,0}},
-        {{ 1.0f,-1.0f,-1.0f}, { 0.0f, 1.0f, 0.0f}, {1,0,0}},
-        {{ 1.0f, 1.0f, 1.0f}, { 0.0f, 1.0f, 0.0f}, {1,0,0}},
-        {{ 1.0f,-1.0f,-1.0f}, { 0.0f, 1.0f, 0.0f}, {1,0,0}},
-        {{ 1.0f, 1.0f,-1.0f}, { 0.0f, 1.0f, 0.0f}, {1,0,0}},
-        {{ 1.0f, 1.0f, 1.0f}, { 0.0f, 1.0f, 0.0f}, {1,0,0}},
+    {{-1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {0, 1, 0}},
+    {{1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {0, 1, 0}},
+    {{-1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}, {0, 1, 0}},
+    {{1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 1.0f}, {0, 1, 0}},
+    {{1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}, {0, 1, 0}},
+    {{-1.0f, 1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}, {0, 1, 0}},
 
+    {{-1.0f, -1.0f, 1.0f}, {1.0f, 1.0f, 0.0f}, {-1, 0, 0}},
+    {{-1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 0.0f}, {-1, 0, 0}},
+    {{-1.0f, -1.0f, -1.0f}, {1.0f, 1.0f, 0.0f}, {-1, 0, 0}},
+    {{-1.0f, -1.0f, -1.0f}, {1.0f, 1.0f, 0.0f}, {-1, 0, 0}},
+    {{-1.0f, 1.0f, 1.0f}, {1.0f, 1.0f, 0.0f}, {-1, 0, 0}},
+    {{-1.0f, 1.0f, -1.0f}, {1.0f, 1.0f, 0.0f}, {-1, 0, 0}},
 
-        {{-1.0f, 1.0f, 1.0f}, { 0.0f, 0.0f, 1.0f}, {0,1,0}},
-        {{ 1.0f, 1.0f, 1.0f}, { 0.0f, 0.0f, 1.0f}, {0,1,0}},
-        {{-1.0f, 1.0f,-1.0f}, { 0.0f, 0.0f, 1.0f}, {0,1,0}},
-        {{ 1.0f, 1.0f, 1.0f}, { 0.0f, 0.0f, 1.0f}, {0,1,0}},
-        {{ 1.0f, 1.0f,-1.0f}, { 0.0f, 0.0f, 1.0f}, {0,1,0}},
-        {{-1.0f, 1.0f,-1.0f}, { 0.0f, 0.0f, 1.0f}, {0,1,0}},
+    {{-1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 1.0f}, {0, -1, 0}},
+    {{-1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 1.0f}, {0, -1, 0}},
+    {{1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 1.0f}, {0, -1, 0}},
+    {{1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 1.0f}, {0, -1, 0}},
+    {{-1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 1.0f}, {0, -1, 0}},
+    {{1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 1.0f}, {0, -1, 0}},
 
+    {{-1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 1.0f}, {0, 0, -1}},
+    {{-1.0f, 1.0f, -1.0f}, {1.0f, 0.0f, 1.0f}, {0, 0, -1}},
+    {{1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 1.0f}, {0, 0, -1}},
+    {{1.0f, -1.0f, -1.0f}, {1.0f, 0.0f, 1.0f}, {0, 0, -1}},
+    {{-1.0f, 1.0f, -1.0f}, {1.0f, 0.0f, 1.0f}, {0, 0, -1}},
+    {{1.0f, 1.0f, -1.0f}, {1.0f, 0.0f, 1.0f}, {0, 0, -1}},
 
-        {{-1.0f,-1.0f, 1.0f}, { 1.0f, 1.0f, 0.0f}, {-1,0,0}},
-        {{-1.0f, 1.0f, 1.0f}, { 1.0f, 1.0f, 0.0f}, {-1,0,0}},
-        {{-1.0f,-1.0f,-1.0f}, { 1.0f, 1.0f, 0.0f}, {-1,0,0}},
-        {{-1.0f,-1.0f,-1.0f}, { 1.0f, 1.0f, 0.0f}, {-1,0,0}},
-        {{-1.0f, 1.0f, 1.0f}, { 1.0f, 1.0f, 0.0f}, {-1,0,0}},
-        {{-1.0f, 1.0f,-1.0f}, { 1.0f, 1.0f, 0.0f}, {-1,0,0}},
-
-
-        {{-1.0f,-1.0f, 1.0f}, { 0.0f, 1.0f, 1.0f}, {0,-1,0}},
-        {{-1.0f,-1.0f,-1.0f}, { 0.0f, 1.0f, 1.0f}, {0,-1,0}},
-        {{ 1.0f,-1.0f, 1.0f}, { 0.0f, 1.0f, 1.0f}, {0,-1,0}},
-        {{ 1.0f,-1.0f, 1.0f}, { 0.0f, 1.0f, 1.0f}, {0,-1,0}},
-        {{-1.0f,-1.0f,-1.0f}, { 0.0f, 1.0f, 1.0f}, {0,-1,0}},
-        {{ 1.0f,-1.0f,-1.0f}, { 0.0f, 1.0f, 1.0f}, {0,-1,0}},
-
-
-        {{-1.0f,-1.0f,-1.0f}, { 1.0f, 0.0f, 1.0f}, {0,0,-1}},
-        {{-1.0f, 1.0f,-1.0f}, { 1.0f, 0.0f, 1.0f}, {0,0,-1}},
-        {{ 1.0f,-1.0f,-1.0f}, { 1.0f, 0.0f, 1.0f}, {0,0,-1}},
-        {{ 1.0f,-1.0f,-1.0f}, { 1.0f, 0.0f, 1.0f}, {0,0,-1}},
-        {{-1.0f, 1.0f,-1.0f}, { 1.0f, 0.0f, 1.0f}, {0,0,-1}},
-        {{ 1.0f, 1.0f,-1.0f}, { 1.0f, 0.0f, 1.0f}, {0,0,-1}},
-
-    };
+};
 // gli indici servono a dire quali vertici usare per formare il triangolo
 // per ottenere i 4 triangoli con colori diversi, il primo vertice del triangolo deve essere quello dominante
 // rispetto a openGL, in vulkan l'ordine degli indici è invertito, quindi dobbiamo invertire gli indici
@@ -185,8 +194,12 @@ struct MyCamera camera{
     glm::vec3(0.0f, 1.0f, 0.0f), // vettore up della camera
     0.0f, -90.0f};               // angoli di yaw e pitch della camera
 
-//creiamo un oggetto per la luce ambientale
+// creiamo un oggetto per la luce ambientale
 AmbientLight ambient_light(glm::vec3(1,1,1),0.2);
+
+DirectionalLight directional_light(glm::vec3(1,1,1),glm::vec3(0,0,-1));
+
+DiffusiveLight diffusive_light(1.0f);
 class HelloTriangleApplication
 {
 public:
@@ -290,6 +303,8 @@ private:
                 break;
             case GLFW_KEY_1:
             case GLFW_KEY_2:
+            case GLFW_KEY_3:
+            case GLFW_KEY_4:
                 lightControls(key);
                 break;
             default:
@@ -336,6 +351,7 @@ private:
         direction.y = sin(glm::radians(camera.pitch));
         direction.z = sin(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
         camera.target = camera.pos + glm::normalize(direction);
+
     }
 
     static void cameraControls(int key)
@@ -410,7 +426,7 @@ private:
             break;
         }
     }
-    
+
     static void lightControls(int key)
     {
         switch (key)
@@ -422,6 +438,14 @@ private:
         case GLFW_KEY_2:
             // aumentiamo l'intensità della luce ambientale
             ambient_light.inc(0.05);
+            break;
+        case GLFW_KEY_3:
+            // diminuiamo l'intensità della luce diffusa
+            diffusive_light.dec(0.05);
+            break;
+        case GLFW_KEY_4:
+            // aumentiamo l'intensità della luce diffusa
+            diffusive_light.inc(0.05);
             break;
         }
     }
@@ -1523,14 +1547,16 @@ private:
 
     void updateUniformBuffer(const uint32_t frame)
     {
-
-        // matrice di rotazione
+        // ora applico tutto al uniform buffer object
         struct UniformBufferObject ubo{};
-        ubo.transform = glm::scale(glm::mat4(), glm::vec3(0.5f, 0.5f, 0.5f)) * cubeTransform;                                 // identità
-        ubo.view = glm::lookAt(camera.pos, camera.target, camera.up);                                                         // matrice di vista della camera
-        ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f); // proiezione prospettica
-        ubo.ambientColor = ambient_light.color();
-        ubo.ambientLightIntensity = ambient_light.intensity();
+        ubo.sMatrices.model = glm::scale(glm::mat4(), glm::vec3(0.5f, 0.5f, 0.5f)) * cubeTransform;                                     // identità
+        ubo.sMatrices.view = glm::lookAt(camera.pos, camera.target, camera.up);                                                         // matrice di vista della camera
+        ubo.sMatrices.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f); // proiezione prospettica
+        ubo.aLight.color = ambient_light.color();
+        ubo.aLight.intensity = ambient_light.intensity();
+        ubo.dirLight.color = directional_light.color();
+        ubo.dirLight.direction = glm::normalize(directional_light.direction());
+        ubo.diffLight.intensity = diffusive_light.intensity();
         memcpy(uniformBuffersMapped[frame], &ubo, sizeof(ubo));
     }
 

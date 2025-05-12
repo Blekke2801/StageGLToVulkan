@@ -6,16 +6,24 @@ layout(location = 1) in vec3 inColor;
 //viene usato flat in modo da non far mescolare i colori
 layout(location = 0) flat out vec3 fragColor;
 
-layout(binding = 0) uniform UniformBufferObject {
+struct SceneMatrices {
     mat4 transform;
     mat4 view;
     mat4 proj;
-    vec3 ambientColor; //colore della luce ambientale
-    float ambientLightIntensity; //intensità della luce ambientale
+};
+
+struct AmbientLight {
+    vec3 color;
+    float intensity;
+};
+
+layout(binding = 0) uniform UniformBufferObject{
+    SceneMatrices scene;
+    AmbientLight ambientLight;
 } ubo;
 
 void main()
 {
-    gl_Position = ubo.proj * ubo.view * ubo.transform * vec4(inPosition, 1.0);
+    gl_Position = ubo.scene.proj * ubo.scene.view * ubo.scene.transform * vec4(inPosition, 1.0);
     fragColor = inColor;
 }

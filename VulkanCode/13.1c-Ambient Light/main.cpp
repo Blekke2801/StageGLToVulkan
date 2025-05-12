@@ -39,14 +39,21 @@ const uint32_t HEIGHT = 768;
 
 const uint32_t MAX_FRAMES_IN_FLIGHT = 2; // numero di frame in volo
 auto previousTime = std::chrono::high_resolution_clock::now();
-//essendo che ora abbiamo anche la luce, dobbiamo aggiungere i suoi parametri al uniform buffer object
+
+
 struct UniformBufferObject
 {
-    glm::mat4 transform;
-    glm::mat4 view;
-    glm::mat4 proj;
-    glm::vec3 ambientColor; //colore della luce ambientale
-    float ambientLightIntensity; //intensità della luce ambientale
+    struct SceneMatrices //struttura per le matrici di scena
+    {
+        glm::mat4 model;
+        glm::mat4 view;
+        glm::mat4 proj;
+    } sMatrices;
+    struct AmbientLightStruct //struttura per la luce ambientale
+    {
+        glm::vec3 color; // colore della luce ambientale
+        float intensity; // intensità della luce ambientale
+    } aLight;            // luce ambientale
 };
 // ho creato una mia struttura per la camera
 struct MyCamera
@@ -175,8 +182,8 @@ struct MyCamera camera{
     glm::vec3(0.0f, 1.0f, 0.0f), // vettore up della camera
     0.0f, -90.0f};               // angoli di yaw e pitch della camera
 
-//creiamo un oggetto per la luce ambientale
-AmbientLight ambient_light(glm::vec3(1,1,1),0.2);
+// creiamo un oggetto per la luce ambientale
+AmbientLight ambient_light(glm::vec3(1, 1, 1), 0.2);
 class HelloTriangleApplication
 {
 public:
@@ -400,7 +407,7 @@ private:
             break;
         }
     }
-    
+
     static void lightControls(int key)
     {
         switch (key)
@@ -1513,14 +1520,12 @@ private:
 
     void updateUniformBuffer(const uint32_t frame)
     {
-
-        // matrice di rotazione
         struct UniformBufferObject ubo{};
-        ubo.transform = glm::scale(glm::mat4(), glm::vec3(0.5f, 0.5f, 0.5f)) * cubeTransform;                                 // identità
-        ubo.view = glm::lookAt(camera.pos, camera.target, camera.up);                                                         // matrice di vista della camera
-        ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f); // proiezione prospettica
-        ubo.ambientColor = ambient_light.color();
-        ubo.ambientLightIntensity = ambient_light.intensity();
+        ubo.sMatrices.model = glm::scale(glm::mat4(), glm::vec3(0.5f, 0.5f, 0.5f)) * cubeTransform;                                     // identità
+        ubo.sMatrices.view = glm::lookAt(camera.pos, camera.target, camera.up);                                                         // matrice di vista della camera
+        ubo.sMatrices.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f); // proiezione prospettica
+        ubo.aLight.color = ambient_light.color();
+        ubo.aLight.intensity = ambient_light.intensity();
         memcpy(uniformBuffersMapped[frame], &ubo, sizeof(ubo));
     }
 

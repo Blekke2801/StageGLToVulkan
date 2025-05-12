@@ -132,7 +132,7 @@ bool ShaderClass::compileAllIfNeeded()
     if (!allCompiled)
     {
         std::system("start cmd /K compile.bat");
-        //essendo che l'applicazione è da riavviare per forza, non ha senso continuare
+        // essendo che l'applicazione è da riavviare per forza, non ha senso continuare
         std::cerr << "[INFO] Shader compilati. Riavvia manualmente l'applicazione." << std::endl;
         throw std::runtime_error("riavvio necessario per la compilazione delle shader");
     }
@@ -174,3 +174,7 @@ VkShaderModule ShaderClass::createShaderModule(const std::vector<char> &code)
 
     return shaderModule;
 }
+
+// void updateUniformBuffer(const std::vector<void *> uniformBufferMapped, const uint32_t frame)
+// {
+// }

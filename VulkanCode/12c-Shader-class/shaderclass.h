@@ -35,7 +35,7 @@ class ShaderClass
 public:
     // Costruttore: Inizializza la classe ShaderClass con la directory degli shader e il dispositivo Vulkan.
     ShaderClass(const std::string &shaderDir, const VkDevice &device);
-    
+
     // Distruttore: Libera le risorse utilizzate dalla classe ShaderClass.
     ~ShaderClass();
 
@@ -50,9 +50,12 @@ public:
 
     // Restituisce il modulo shader Vulkan per lo shader vertex.
     VkShaderModule getVertShaderModule() const;
-    
+
     // Restituisce il modulo shader Vulkan per lo shader fragment.
     VkShaderModule getFragShaderModule() const;
+
+    // aggiorna e restituisce lo struct da mappare successivamente nel buffer uniforme
+    // void updateUniformBuffer(const std::vector<void *> uniformBufferMapped, const uint32_t frame);
 
 protected:
     // Verifica se il file sorgente dello shader necessita di ricompilazione in base ai timestamp.
@@ -65,13 +68,14 @@ protected:
     VkShaderModule createShaderModule(const std::vector<char> &code);
 
 private:
-    VkDevice device; // Handle del dispositivo Vulkan
-    std::string sdkPath; // Percorso dell'SDK Vulkan
-    std::string shaderDir; // Directory contenente i file sorgente degli shader
-    std::vector<Shader> shaders; // Lista degli shader con i loro tipi e percorsi compilati
-    VkShaderModule fragShaderModule; // Modulo shader fragment
-    VkShaderModule vertShaderModule; // Modulo shader vertex
+    VkDevice device;                              // Handle del dispositivo Vulkan
+    std::string sdkPath;                          // Percorso dell'SDK Vulkan
+    std::string shaderDir;                        // Directory contenente i file sorgente degli shader
+    std::vector<Shader> shaders;                  // Lista degli shader con i loro tipi e percorsi compilati
+    VkShaderModule fragShaderModule;              // Modulo shader fragment
+    VkShaderModule vertShaderModule;              // Modulo shader vertex
     VkPipelineShaderStageCreateInfo stageInfos{}; // Informazioni sugli stage shader per la creazione della pipeline
+    // UniformBufferObject ubo;                      // struttura del buffer uniforme
 };
 
 #endif

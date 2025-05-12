@@ -23,7 +23,7 @@ endif
 
 OBJS = main.o shaderclass.o light.o
 
-ambient-light.exe : $(OBJS)
+diffusive-light.exe : $(OBJS)
 	$(CC) $(CCFLAGS) $^ $(LIBDIRS) $(LIBS) -o $@
 
 main.o : main.cpp
