@@ -40,10 +40,6 @@ layout(binding = 0) uniform UniformBufferObject{
 
 
 void main() {
-    vec3 I_amb =  fragColor * (ubo.ambientLight.color * ubo.ambientLight.intensity);
-
-	vec3 I_dif = vec3(0,0,0);
-
 	// Normalizziamo il vettore delle normali
 	vec3 normal = normalize(fragNormal);
 
@@ -52,9 +48,11 @@ void main() {
 	// calcolare il fattore coseno.
 	// Bisogna sempre essere sicuri di avere le normali in forma di 
 	// versori  
-	float cosTheta = max(dot(normal, ubo.directionalLight.direction), 0.0);
-	I_dif = fragColor * (ubo.directionalLight.color * ubo.diffusiveLight.intensity) * cosTheta;
+	vec3 lightDir = normalize(-ubo.directionalLight.direction);
+	float cosTheta = max(dot(normal, lightDir), 0.0);
+    vec3 I_amb =  fragColor * (ubo.ambientLight.color * ubo.ambientLight.intensity);
+	vec3 I_dif = fragColor * (ubo.directionalLight.color * ubo.diffusiveLight.intensity) * cosTheta;
 
 
-	outColor = vec4(vec3(cosTheta), 1.0);
+	outColor = vec4(vec3(cosTheta), 1.0); 
 }

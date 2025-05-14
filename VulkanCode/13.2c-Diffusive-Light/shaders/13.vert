@@ -43,6 +43,6 @@ layout(binding = 0) uniform UniformBufferObject{
 void main()
 {
     gl_Position = ubo.scene.proj * ubo.scene.view * ubo.scene.transform * vec4(inPosition, 1.0);
-    fragNormal = (ubo.scene.transform * vec4(normal, 0.0)).xyz;
+    fragNormal = (transpose(inverse(ubo.scene.transform)) * vec4(normal,0.0)).xyz;
     fragColor = inColor;
 }

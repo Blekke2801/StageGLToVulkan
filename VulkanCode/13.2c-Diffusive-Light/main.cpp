@@ -197,7 +197,7 @@ struct MyCamera camera{
 // creiamo un oggetto per la luce ambientale
 AmbientLight ambient_light(glm::vec3(1,1,1),0.2);
 
-DirectionalLight directional_light(glm::vec3(1,1,1),glm::vec3(0,0,-1));
+DirectionalLight directional_light(glm::vec3(1,1,1), glm::vec3(0,0,-1));
 
 DiffusiveLight diffusive_light(1.0f);
 class HelloTriangleApplication
@@ -1555,7 +1555,7 @@ private:
         ubo.aLight.color = ambient_light.color();
         ubo.aLight.intensity = ambient_light.intensity();
         ubo.dirLight.color = directional_light.color();
-        ubo.dirLight.direction = glm::normalize(directional_light.direction());
+        ubo.dirLight.direction = directional_light.direction();
         ubo.diffLight.intensity = diffusive_light.intensity();
         memcpy(uniformBuffersMapped[frame], &ubo, sizeof(ubo));
     }
