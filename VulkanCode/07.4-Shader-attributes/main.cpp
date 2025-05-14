@@ -121,7 +121,7 @@ static std::vector<char> readFile(const std::string &filename)
 
     return buffer;
 }
-class HelloTriangleApplication
+class InformaticaGraficaApplication
 {
 public:
     void run()
@@ -1386,7 +1386,7 @@ private:
 
 int main()
 {
-    HelloTriangleApplication app;
+    InformaticaGraficaApplication app;
 
     try
     {

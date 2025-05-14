@@ -150,7 +150,7 @@ static std::vector<char> readFile(const std::string &filename)
 
 // questo struct servirà a passare i dati alla shader, in questo caso la matrice di proiezione e la matrice di vista
 
-class HelloTriangleApplication
+class InformaticaGraficaApplication
 {
 public:
     void run()
@@ -1617,7 +1617,7 @@ private:
 
 int main()
 {
-    HelloTriangleApplication app;
+    InformaticaGraficaApplication app;
 
     try
     {

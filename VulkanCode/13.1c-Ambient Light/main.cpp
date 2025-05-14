@@ -184,7 +184,7 @@ struct MyCamera camera{
 
 // creiamo un oggetto per la luce ambientale
 AmbientLight ambient_light(glm::vec3(1, 1, 1), 0.2);
-class HelloTriangleApplication
+class InformaticaGraficaApplication
 {
 public:
     void run()
@@ -1780,7 +1780,7 @@ private:
 
 int main()
 {
-    HelloTriangleApplication app;
+    InformaticaGraficaApplication app;
 
     try
     {

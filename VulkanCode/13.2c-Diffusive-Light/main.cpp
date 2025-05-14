@@ -40,27 +40,32 @@ const uint32_t HEIGHT = 768;
 const uint32_t MAX_FRAMES_IN_FLIGHT = 2; // numero di frame in volo
 auto previousTime = std::chrono::high_resolution_clock::now();
 // essendo che ora abbiamo anche la luce, dobbiamo aggiungere i suoi parametri al uniform buffer object
+//ogni strutture deve essere allineata a 16 byte, quindi dobbiamo usare alignas(16) per le strutture e usare anche dei padding
+// per allineare i dati
 struct UniformBufferObject
 {
-    struct SceneMatrices // struttura per le matrici di scena
+    struct alignas(16) SceneMatrices // struttura per le matrici di scena
     {
         glm::mat4 model;
         glm::mat4 view;
         glm::mat4 proj;
     } sMatrices;
-    struct AmbientLightStruct // struttura per la luce ambientale
+    struct alignas(16) AmbientLightStruct // struttura per la luce ambientale
     {
         glm::vec3 color;          // colore della luce ambientale
         float intensity;          // intensità della luce ambientale
     } aLight;                     // luce ambientale
-    struct DirectionalLightStruct // struttura per la luce direzionale
+    struct alignas(16) DirectionalLightStruct // struttura per la luce direzionale
     {
         glm::vec3 color;
+        float _pad1; // padding per allineare il prossimo vec3
         glm::vec3 direction;
+        float _pad2; // padding per completare il blocco a 16 byte
     } dirLight;
-    struct DiffusiveLightStruct // struttura per la luce diffusa
+    struct alignas(16) DiffusiveLightStruct // struttura per la luce diffusa
     {
-        alignas(16) float intensity; //essendo che la struttura deve essere allineata a 16 byte, dobbiamo usare alignas(16)
+        float intensity; 
+        float _pad3[3];
     } diffLight;
 };
 // ho creato una mia struttura per la camera
@@ -200,7 +205,7 @@ AmbientLight ambient_light(glm::vec3(1,1,1),0.2);
 DirectionalLight directional_light(glm::vec3(1,1,1), glm::vec3(0,0,-1));
 
 DiffusiveLight diffusive_light(1.0f);
-class HelloTriangleApplication
+class InformaticaGraficaApplication
 {
 public:
     void run()
@@ -1811,7 +1816,7 @@ private:
 
 int main()
 {
-    HelloTriangleApplication app;
+    InformaticaGraficaApplication app;
 
     try
     {

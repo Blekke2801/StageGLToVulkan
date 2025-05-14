@@ -3,6 +3,7 @@
 //serve flat per ottenere il flat shading
 layout(location = 0) in vec3 fragColor;
 layout(location = 1) in vec3 fragNormal;
+layout(location = 2) in vec3 fragPos;
 
 layout(location = 0) out vec4 outColor;
 
@@ -30,11 +31,18 @@ struct DiffusiveLightStruct {
 	float intensity;
 };
 
+struct SpecularLightStruct {
+	float intensity;
+	float shininess;
+};
+
 layout(binding = 0) uniform UniformBufferObject{
     SceneMatrices scene;
     AmbientLight ambientLight;
     DirectionalLightStruct directionalLight;
     DiffusiveLightStruct diffusiveLight;
+	SpecularLightStruct specularLight;
+	vec4 cameraPosition;
 } ubo;
 
 
@@ -42,17 +50,17 @@ layout(binding = 0) uniform UniformBufferObject{
 void main() {
 	// Normalizziamo il vettore delle normali
 	vec3 normal = normalize(fragNormal);
-
-	// La direzione della luce è un vettore che parte dalla luce fino 
-	// agli oggetti. E' necessario invertire la direzione prima di 
-	// calcolare il fattore coseno.
-	// Bisogna sempre essere sicuri di avere le normali in forma di 
-	// versori  
 	vec3 lightDir = normalize(-ubo.directionalLight.direction);
 	float cosTheta = max(dot(normal, lightDir), 0.0);
+
+	vec3 view_dir    = normalize(ubo.cameraPosition.xyz - fragPos);
+	vec3 reflect_dir = normalize(reflect(ubo.directionalLight.direction,normal));
+	float cosAlpha = max(dot(view_dir, reflect_dir), 0.0);
+
+	vec3 I_spec = fragColor * (ubo.directionalLight.color * ubo.specularLight.intensity) * pow(cosAlpha,ubo.specularLight.shininess);
     vec3 I_amb =  fragColor * (ubo.ambientLight.color * ubo.ambientLight.intensity);
 	vec3 I_dif = fragColor * (ubo.directionalLight.color * ubo.diffusiveLight.intensity) * cosTheta;
 
 
-	outColor = vec4(I_amb + I_dif, 1.0); 
+	outColor = vec4(I_amb + I_dif + I_spec, 1.0); 
 }

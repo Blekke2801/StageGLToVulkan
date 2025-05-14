@@ -158,7 +158,7 @@ struct MyCamera camera{
     glm::vec3(0.0f, 1.0f, 0.0f), // vettore up della camera
     0.0f, -90.0f};               // angoli di yaw e pitch della camera
 
-class HelloTriangleApplication
+class InformaticaGraficaApplication
 {
 public:
     void run()
@@ -1700,7 +1700,7 @@ private:
 
 int main()
 {
-    HelloTriangleApplication app;
+    InformaticaGraficaApplication app;
 
     try
     {
