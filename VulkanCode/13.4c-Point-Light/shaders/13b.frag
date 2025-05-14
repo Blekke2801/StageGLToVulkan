@@ -19,13 +19,6 @@ struct AmbientLight {
 };
 
 // Struttura dati di lavoro per contenere le informazioni sulla luce
-// direzionale
-struct DirectionalLightStruct {
-	vec3 color;
-	vec3 direction;
-};
-
-// Struttura dati di lavoro per contenere le informazioni sulla luce
 // diffusiva
 struct DiffusiveLightStruct {
 	float intensity;
@@ -36,13 +29,20 @@ struct SpecularLightStruct {
 	float shininess;
 };
 
+// Struttura dati di lavoro per contenere le informazioni sulla luce
+// puntiforme
+struct PointLightStruct {
+	vec3 color;
+	vec3 position;
+};
+
 layout(binding = 0) uniform UniformBufferObject{
     SceneMatrices scene;
     AmbientLight ambientLight;
-    DirectionalLightStruct directionalLight;
+    PointLightStruct pointLight;// sostituisce pointLight
     DiffusiveLightStruct diffusiveLight;
 	SpecularLightStruct specularLight;
-	vec4 cameraPosition;
+    vec4 cameraPos;
 } ubo;
 
 
@@ -50,16 +50,16 @@ layout(binding = 0) uniform UniformBufferObject{
 void main() {
 	// Normalizziamo il vettore delle normali
 	vec3 normal = normalize(fragNormal);
-	vec3 lightDir = normalize(-ubo.directionalLight.direction);
+	vec3 lightDir = normalize(fragPos-ubo.pointLight.position);
 	float cosTheta = max(dot(normal, lightDir), 0.0);
 
-	vec3 view_dir    = normalize(ubo.cameraPosition.xyz - fragPos);
-	vec3 reflect_dir = normalize(reflect(ubo.directionalLight.direction,normal));
+	vec3 view_dir    = normalize(ubo.cameraPos.xyz - fragPos);
+	vec3 reflect_dir = normalize(reflect(lightDir, normal));
 	float cosAlpha = max(dot(view_dir, reflect_dir), 0.0);
 
-	vec3 I_spec = fragColor * (ubo.directionalLight.color * ubo.specularLight.intensity) * pow(cosAlpha,ubo.specularLight.shininess);
+	vec3 I_spec = fragColor * (ubo.pointLight.color * ubo.specularLight.intensity) * pow(cosAlpha,ubo.specularLight.shininess);
     vec3 I_amb =  fragColor * (ubo.ambientLight.color * ubo.ambientLight.intensity);
-	vec3 I_dif = fragColor * (ubo.directionalLight.color * ubo.diffusiveLight.intensity) * cosTheta;
+	vec3 I_dif = fragColor * (ubo.pointLight.color * ubo.diffusiveLight.intensity) * cosTheta;
 
 
 	outColor = vec4(I_amb + I_dif + I_spec, 1.0); 

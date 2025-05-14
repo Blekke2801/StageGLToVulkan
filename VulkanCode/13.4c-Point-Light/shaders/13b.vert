@@ -17,16 +17,10 @@ struct SceneMatrices {
     mat4 proj;
 };
 
+
 struct AmbientLight {
     vec3 color;
     float intensity;
-};
-
-// Struttura dati di lavoro per contenere le informazioni sulla luce
-// direzionale
-struct DirectionalLightStruct {
-	vec3 color;
-	vec3 direction;
 };
 
 // Struttura dati di lavoro per contenere le informazioni sulla luce
@@ -35,15 +29,24 @@ struct DiffusiveLightStruct {
 	float intensity;
 };
 
+// Struttura dati di lavoro per contenere le informazioni sulla luce
+// speculare
 struct SpecularLightStruct {
 	float intensity;
 	float shininess;
 };
 
+// Struttura dati di lavoro per contenere le informazioni sulla luce
+// puntiforme
+struct PointLightStruct {
+	vec3 color;
+	vec3 position;
+};
+
 layout(binding = 0) uniform UniformBufferObject{
     SceneMatrices scene;
-    AmbientLight ambientLight;
-    DirectionalLightStruct directionalLight;
+    AmbientLight ambientLight; 
+    PointLightStruct pointLight;
     DiffusiveLightStruct diffusiveLight;
 	SpecularLightStruct specularLight;
     vec4 cameraPos;

@@ -23,7 +23,7 @@ endif
 
 OBJS = main.o shaderclass.o light.o
 
-specular-light.exe : $(OBJS)
+point-light.exe : $(OBJS)
 	$(CC) $(CCFLAGS) $^ $(LIBDIRS) $(LIBS) -o $@
 
 main.o : main.cpp

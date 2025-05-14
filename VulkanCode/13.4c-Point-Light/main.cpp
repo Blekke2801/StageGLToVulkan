@@ -55,13 +55,13 @@ struct UniformBufferObject
         glm::vec3 color;          // colore della luce ambientale
         float intensity;          // intensità della luce ambientale
     } aLight;                     // luce ambientale
-    struct alignas(16) DirectionalLightStruct // struttura per la luce direzionale
+    struct alignas(16) PointLightStruct // struttura per la luce direzionale
     {
         glm::vec3 color;
         float _pad1; // padding per allineare il prossimo vec3
-        glm::vec3 direction;
+        glm::vec3 position;
         float _pad2; // padding per completare il blocco a 16 byte
-    } dirLight;
+    } pointLight;
     struct alignas(16) DiffusiveLightStruct // struttura per la luce diffusa
     {
         float intensity; 
@@ -208,7 +208,7 @@ struct MyCamera camera{
 
 AmbientLight ambient_light(glm::vec3(1,1,1),0.2); // colore e intensità della luce ambientale
 
-DirectionalLight directional_light(glm::vec3(1,1,1), glm::vec3(0,0,-1)); // colore e direzione della luce direzionale
+PointLight point_light(glm::vec3(1,1,1), glm::vec3(0,0,-1)); // colore e direzione della luce direzionale
 
 DiffusiveLight diffusive_light(1.0f); // intensità della luce diffusa
 
@@ -1588,8 +1588,8 @@ private:
         ubo.sMatrices.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f); // proiezione prospettica
         ubo.aLight.color = ambient_light.color();
         ubo.aLight.intensity = ambient_light.intensity();
-        ubo.dirLight.color = directional_light.color();
-        ubo.dirLight.direction = directional_light.direction();
+        ubo.pointLight.color = point_light.color();
+        ubo.pointLight.position = point_light.position();
         ubo.diffLight.intensity = diffusive_light.intensity();
         ubo.specLight.intensity = specular_light.intensity();
         ubo.specLight.shininess = specular_light.shininess();
