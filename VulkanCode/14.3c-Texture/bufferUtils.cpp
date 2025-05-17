@@ -2,6 +2,44 @@
 #include <stdexcept> // For std::runtime_error
 #include <iostream>
 
+// vulkan ha bisogno di sapere come interpretare i dati che gli passiamo, quindi dobbiamo specificare il formato dei dati
+VkVertexInputBindingDescription Vertex::getBindingDescription()
+{
+    VkVertexInputBindingDescription bindingDescription{};
+    bindingDescription.binding = 0;
+    bindingDescription.stride = sizeof(Vertex);
+    bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+    return bindingDescription;
+}
+
+// questo invece è per dire come estrarre i dati dai vertici, quindi dobbiamo specificare il formato dei dati e l'offset (cioè la posizione del dato all'interno della struttura)
+std::array<VkVertexInputAttributeDescription, 3> Vertex::getAttributeDescriptions()
+{
+    std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
+    attributeDescriptions[0].binding = 0;
+    attributeDescriptions[0].location = 0;
+    // che formato ha il dato?
+    // float: VK_FORMAT_R32_SFLOAT
+    // vec2: VK_FORMAT_R32G32_SFLOAT
+    // vec3: VK_FORMAT_R32G32B32_SFLOAT
+    // vec4: VK_FORMAT_R32G32B32A32_SFLOAT
+    attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+    attributeDescriptions[0].offset = offsetof(Vertex, pos);
+
+    attributeDescriptions[1].binding = 0;
+    attributeDescriptions[1].location = 1;
+    attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+    attributeDescriptions[1].offset = offsetof(Vertex, normal);
+
+    attributeDescriptions[2].binding = 0;
+    attributeDescriptions[2].location = 2;
+    attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+    attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
+
+    return attributeDescriptions;
+}
+
 void createBuffer(VkDevice device, VkPhysicalDevice physicalDevice,
                   VkDeviceSize size, VkBufferUsageFlags usage,
                   VkMemoryPropertyFlags properties,
@@ -260,7 +298,8 @@ void endSingleTimeCommands(VkDevice device, VkCommandPool commandPool, VkQueue g
     vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
 }
 
-VkImageView createImageView(VkDevice device, VkImage image, VkFormat format) {
+VkImageView createImageView(VkDevice device, VkImage image, VkFormat format)
+{
     VkImageViewCreateInfo viewInfo{};
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewInfo.image = image;
@@ -273,7 +312,8 @@ VkImageView createImageView(VkDevice device, VkImage image, VkFormat format) {
     viewInfo.subresourceRange.layerCount = 1;
 
     VkImageView imageView;
-    if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+    if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS)
+    {
         throw std::runtime_error("failed to create image view!");
     }
 

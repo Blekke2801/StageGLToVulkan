@@ -1,9 +1,9 @@
 #version 450
 
 //serve flat per ottenere il flat shading
-layout(location = 0) in vec3 fragColor;
-layout(location = 1) in vec3 fragNormal;
-layout(location = 2) in vec3 fragPos;
+layout(location = 0) in vec3 fragNormal;
+layout(location = 1) in vec3 fragPos;
+layout(location = 2) in vec2 fragTextCoord;
 
 layout(location = 0) out vec4 outColor;
 
@@ -48,8 +48,7 @@ layout(binding = 0) uniform UniformBufferObject{
 layout(binding = 1) uniform sampler2D texSampler;
 
 void main() {
-	// Normalizziamo il vettore delle normali
-	vec4 material_color = texture(texSampler, fragment_textcoord);
+	vec4 material_color = texture(texSampler, fragTextCoord);
 
 	vec3 normal = normalize(fragNormal);
 	vec3 lightDir = normalize(fragPos-ubo.pointLight.position);

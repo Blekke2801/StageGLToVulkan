@@ -27,6 +27,8 @@
 #include <algorithm>
 #include <fstream>
 #include <chrono>
+#include <map>
+#include <string>
 
 #ifdef NDEBUG
 const bool enableValidationLayers = false;
@@ -88,104 +90,7 @@ struct MyCamera
     float pitch;
 };
 
-struct Vertex
-{
-    glm::vec3 pos;
-    glm::vec3 normal;
-    glm::vec2 texCoord;
-    // vulkan ha bisogno di sapere come interpretare i dati che gli passiamo, quindi dobbiamo specificare il formato dei dati
-    static VkVertexInputBindingDescription getBindingDescription()
-    {
-        VkVertexInputBindingDescription bindingDescription{};
-        bindingDescription.binding = 0;
-        bindingDescription.stride = sizeof(Vertex);
-        bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-        return bindingDescription;
-    }
-
-    // questo invece è per dire come estrarre i dati dai vertici, quindi dobbiamo specificare il formato dei dati e l'offset (cioè la posizione del dato all'interno della struttura)
-    static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions()
-    {
-        std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
-        attributeDescriptions[0].binding = 0;
-        attributeDescriptions[0].location = 0;
-        // che formato ha il dato?
-        // float: VK_FORMAT_R32_SFLOAT
-        // vec2: VK_FORMAT_R32G32_SFLOAT
-        // vec3: VK_FORMAT_R32G32B32_SFLOAT
-        // vec4: VK_FORMAT_R32G32B32A32_SFLOAT
-        attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attributeDescriptions[0].offset = offsetof(Vertex, pos);
-
-        attributeDescriptions[1].binding = 0;
-        attributeDescriptions[1].location = 1;
-        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attributeDescriptions[1].offset = offsetof(Vertex, normal);
-
-        attributeDescriptions[2].binding = 0;
-        attributeDescriptions[2].location = 2;
-        attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-        attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
-
-        return attributeDescriptions;
-    }
-};
-// Definizione dei vertici del cubo
-const std::vector<Vertex> vertices = {
-    // Davanti
-    {{-1.0f, -1.0f, 1.0f}, {0, 0, 1}, {0, 0}},
-    {{1.0f, -1.0f, 1.0f}, {0, 0, 1}, {1, 0}},
-    {{-1.0f, 1.0f, 1.0f}, {0, 0, 1}, {0, 1}},
-    {{1.0f, -1.0f, 1.0f}, {0, 0, 1}, {1, 0}},
-    {{1.0f, 1.0f, 1.0f}, {0, 0, 1}, {1, 1}},
-    {{-1.0f, 1.0f, 1.0f}, {0, 0, 1}, {0, 1}},
-
-    // Destra
-    {{1.0f, -1.0f, 1.0f}, {1, 0, 0}, {0, 0}},
-    {{1.0f, -1.0f, -1.0f}, {1, 0, 0}, {1, 0}},
-    {{1.0f, 1.0f, 1.0f}, {1, 0, 0}, {0, 1}},
-    {{1.0f, -1.0f, -1.0f}, {1, 0, 0}, {1, 0}},
-    {{1.0f, 1.0f, -1.0f}, {1, 0, 0}, {1, 1}},
-    {{1.0f, 1.0f, 1.0f}, {1, 0, 0}, {0, 1}},
-
-    // Alto
-    {{-1.0f, 1.0f, 1.0f}, {0, 1, 0}, {0, 0}},
-    {{1.0f, 1.0f, 1.0f}, {0, 1, 0}, {1, 0}},
-    {{-1.0f, 1.0f, -1.0f}, {0, 1, 0}, {0, 1}},
-    {{1.0f, 1.0f, 1.0f}, {0, 1, 0}, {1, 0}},
-    {{1.0f, 1.0f, -1.0f}, {0, 1, 0}, {1, 1}},
-    {{-1.0f, 1.0f, -1.0f}, {0, 1, 0}, {0, 1}},
-
-    // Sinistra
-    {{-1.0f, -1.0f, 1.0f}, {-1, 0, 0}, {1, 0}},
-    {{-1.0f, 1.0f, 1.0f}, {-1, 0, 0}, {1, 1}},
-    {{-1.0f, -1.0f, -1.0f}, {-1, 0, 0}, {0, 0}},
-    {{-1.0f, -1.0f, -1.0f}, {-1, 0, 0}, {0, 0}},
-    {{-1.0f, 1.0f, 1.0f}, {-1, 0, 0}, {1, 1}},
-    {{-1.0f, 1.0f, -1.0f}, {-1, 0, 0}, {0, 1}},
-
-    // Basso
-    {{-1.0f, -1.0f, 1.0f}, {0, -1, 0}, {0, 1}},
-    {{-1.0f, -1.0f, -1.0f}, {0, -1, 0}, {0, 0}},
-    {{1.0f, -1.0f, 1.0f}, {0, -1, 0}, {1, 1}},
-    {{1.0f, -1.0f, 1.0f}, {0, -1, 0}, {1, 1}},
-    {{-1.0f, -1.0f, -1.0f}, {0, -1, 0}, {0, 0}},
-    {{1.0f, -1.0f, -1.0f}, {0, -1, 0}, {1, 0}},
-
-    // Dietro
-    {{-1.0f, -1.0f, -1.0f}, {0, 0, -1}, {1, 0}},
-    {{-1.0f, 1.0f, -1.0f}, {0, 0, -1}, {1, 1}},
-    {{1.0f, -1.0f, -1.0f}, {0, 0, -1}, {0, 0}},
-    {{1.0f, -1.0f, -1.0f}, {0, 0, -1}, {0, 0}},
-    {{-1.0f, 1.0f, -1.0f}, {0, 0, -1}, {1, 1}},
-    {{1.0f, 1.0f, -1.0f}, {0, 0, -1}, {0, 1}}};
-// gli indici servono a dire quali vertici usare per formare il triangolo
-// per ottenere i 4 triangoli con colori diversi, il primo vertice del triangolo deve essere quello dominante
-// rispetto a openGL, in vulkan l'ordine degli indici è invertito, quindi dobbiamo invertire gli indici
-const std::vector<uint32_t> indices = {};
-
-glm::mat4 cubeTransform = glm::mat4(1.0f); // matrice di trasformazione del cubo
+glm::mat4 transform = glm::mat4(1.0f); // matrice di trasformazione del cubo
 
 struct QueueFamilyIndices
 {
@@ -254,16 +159,12 @@ private:
     VkPipelineLayout pipelineLayout;                          // layout della pipeline Vulkan
     VkPipeline graphicsPipeline;
 
-    std::vector<VkFramebuffer> swapChainFramebuffers; // framebuffer della swap chain Vulkan
-    VkCommandPool commandPool;                        // pool di comandi Vulkan
-    std::vector<VkCommandBuffer> commandBuffers;      // buffer di comandi Vulkan
-    VkBuffer vertexBuffer;                            // buffer dei vertici Vulkan
-    VkDeviceMemory vertexBufferMemory;                // memoria del buffer dei vertici Vulkan
-    std::vector<VkBuffer> uniformBuffers;             // buffer uniformi Vulkan
-    std::vector<VkDeviceMemory> uniformBuffersMemory; // memoria dei buffer uniformi Vulkan
-    std::vector<void *> uniformBuffersMapped;         // puntatori ai buffer uniformi Vulkan
-    VkBuffer indexBuffer;                             // buffer degli indici Vulkan
-    VkDeviceMemory indexBufferMemory;                 // memoria del buffer degli indici Vulkan
+    std::vector<VkFramebuffer> swapChainFramebuffers;              // framebuffer della swap chain Vulkan
+    VkCommandPool commandPool;                                     // pool di comandi Vulkan
+    std::vector<VkCommandBuffer> commandBuffers;                   // buffer di comandi Vulkan
+    std::vector<std::vector<VkBuffer>> uniformBuffers;             // buffer uniformi Vulkan
+    std::vector<std::vector<VkDeviceMemory>> uniformBuffersMemory; // memoria dei buffer uniformi Vulkan
+    std::vector<std::vector<void *>> uniformBuffersMapped;         // puntatori ai buffer uniformi Vulkan
 
     // sto usando dei vettori in caso ci siano dei frame aggiuntivi, ma essendo che non ci sono, si puà usare anche un solo elemento
     // i vettori adesso sono solo per scopo didattico, in un'applicazione reale si userebbero i frame in volo per gestire più frame contemporaneamente
@@ -272,8 +173,8 @@ private:
     std::vector<VkFence> inFlightFences;
 
     // risorse per le texture
-    std::vector<Texture *> textures; // vettore di puntatori a texture
-    std::vector<Mesh *> meshes;      // vettore di puntatori a mesh
+    std::map<std::string, Texture *> textures; // mappa delle texture
+    std::vector<Mesh *> meshes;                // vettore di puntatori a mesh
 
     uint32_t currentFrame = 0; // frame corrente
     void initWindow()
@@ -436,19 +337,19 @@ private:
         {
         case GLFW_KEY_W:
             // ruotiamo il cubo in avanti
-            cubeTransform = glm::rotate(cubeTransform, glm::radians(_speed), glm::vec3(1.0f, 0.0f, 0.0f));
+            transform = glm::rotate(transform, glm::radians(_speed), glm::vec3(1.0f, 0.0f, 0.0f));
             break;
         case GLFW_KEY_A:
             // ruotiamo il cubo a sinistra
-            cubeTransform = glm::rotate(cubeTransform, glm::radians(_speed), glm::vec3(0.0f, 1.0f, 0.0f));
+            transform = glm::rotate(transform, glm::radians(_speed), glm::vec3(0.0f, 1.0f, 0.0f));
             break;
         case GLFW_KEY_S:
             // ruotiamo il cubo indietro
-            cubeTransform = glm::rotate(cubeTransform, -glm::radians(_speed), glm::vec3(1.0f, 0.0f, 0.0f));
+            transform = glm::rotate(transform, -glm::radians(_speed), glm::vec3(1.0f, 0.0f, 0.0f));
             break;
         case GLFW_KEY_D:
             // ruotiamo il cubo a destra
-            cubeTransform = glm::rotate(cubeTransform, -glm::radians(_speed), glm::vec3(0.0f, 1.0f, 0.0f));
+            transform = glm::rotate(transform, -glm::radians(_speed), glm::vec3(0.0f, 1.0f, 0.0f));
             break;
         }
     }
@@ -505,8 +406,8 @@ private:
         createGraphicsPipeline();
         createFramebuffers();
         createCommandPool();
-        createVertexBuffer();
         initializeTextures();
+        initializeMeshes();
         createUniformBuffers();
         createDescriptorPool();
         createDescriptorSets();
@@ -542,14 +443,14 @@ private:
 
         for (size_t i = 0; i < uniformBuffers.size(); i++)
         {
-            vkDestroyBuffer(device, uniformBuffers[i], nullptr);
-            vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
+            for (size_t j = 0; j < uniformBuffers[i].size(); j++)
+            {
+                vkDestroyBuffer(device, uniformBuffers[i][j], nullptr);
+                vkFreeMemory(device, uniformBuffersMemory[i][j], nullptr);
+            }
         }
 
         vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
-
-        vkDestroyBuffer(device, vertexBuffer, nullptr);
-        vkFreeMemory(device, vertexBufferMemory, nullptr);
 
         vkDestroyCommandPool(device, commandPool, nullptr);
 
@@ -1238,11 +1139,6 @@ private:
         layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
         layoutInfo.pBindings = bindings.data();
 
-        VkDescriptorSetLayoutCreateInfo layoutInfo{};
-        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layoutInfo.bindingCount = 1;
-        layoutInfo.pBindings = &uboLayoutBinding;
-
         if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS)
         {
             throw std::runtime_error("failed to create descriptor set layout!");
@@ -1390,7 +1286,6 @@ private:
         }
     }
 
-    
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
     {
         // come ogni cosa in vulkan, usiamo uno struct per specificare i parametri
@@ -1454,16 +1349,22 @@ private:
         scissor.extent = swapChainExtent;
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-        VkBuffer vertexBuffers[] = {vertexBuffer};
-        VkDeviceSize offsets[] = {0};
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-        
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, descriptorSets.size(), &descriptorSets, 0, nullptr);
+        // avendo più mesh, dobbiamo usare un ciclo per disegnarle tutte
+        for (size_t i = 0; i < meshes.size(); ++i)
+        {
+            Mesh *mesh = meshes[i];
+            updateUniformBuffer(currentFrame, i);
+            VkBuffer vertexBuffers[] = {mesh->getVertexBuffer()};
+            VkDeviceSize offsets[] = {0};
+            vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
 
-        // ora dobbiamo specificare il buffer di indici
-        // vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+            VkDescriptorSet descriptorSet = mesh->getDescriptorSet(currentFrame);
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    pipelineLayout, 0, 1,
+                                    &descriptorSet, 0, nullptr);
 
-        vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0); // disegniamo i vertici
+            vkCmdDraw(commandBuffer, mesh->getVertexCount(), 1, 0, 0);
+        }
 
         // ora che abbiamo finito di disegnare, possiamo finalmente terminare il render pass
         vkCmdEndRenderPass(commandBuffer);
@@ -1475,61 +1376,6 @@ private:
         }
     }
 
-    // questa funzione ci permette di creare il vertex Buffer
-    void createVertexBuffer()
-    {
-        VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size(); // la dimensione del buffer è la somma della dimensione di tutti i vertici
-
-        // per ottimizzare le prestazioni, usiamo un buffer di staging, che è un buffer temporaneo che viene usato per copiare i dati nella GPU, è come un ponte
-        VkBuffer stagingBuffer;
-        VkDeviceMemory stagingBufferMemory;
-        createBuffer(device, physicalDevice, bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-        // ora piazziamo i dati nel buffer di staging, poi successivamente verranno inseriti nel buffer finale
-        void *data;
-        vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data); // mappiamo la memoria per poterci scrivere
-        // ora possiamo copiare i dati nel buffer, essendo che il buffer è un array di vertici, possiamo usare la funzione memcpy per copiare i dati
-        // però c'è un problema, i dati possono non essere inseriti immediatamente dentro il buffer, per esempio per colpa del caching e quindi essi potrebbero non essere visibili alla GPU
-        // per questo motivo ci sono 2 possibili fix, abbiamo scelto il primo, che è più veloce e semplice
-        //  1. usare un heap che sia coerente all'host, infatti abbiamo usato VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-        //  2. chiamare 2 funzioni: una vkFlushMappedMemoryRanges dopo la memcpy e una vkInvalidateMappedMemoryRanges prima di leggere i dati dalla memoria mappata
-        memcpy(data, vertices.data(), (size_t)bufferSize); // copiamo i dati nel buffer
-        vkUnmapMemory(device, stagingBufferMemory);        // unmapiamo la memoria per poterla usare
-
-        // creiamo il buffer finale, che è quello che verrà usato dalla GPU
-        createBuffer(device, physicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
-        // ora possiamo copiare i dati dal buffer di staging al buffer finale, che è quello che verrà usato dalla GPU
-        copyBuffer(device, commandPool, graphicsQueue, stagingBuffer, vertexBuffer, bufferSize); // copiamo i dati dal buffer di staging al buffer finale
-
-        // e ora puliamo il buffer di staging, che non ci serve più
-        vkDestroyBuffer(device, stagingBuffer, nullptr);    // distruggiamo il buffer di staging
-        vkFreeMemory(device, stagingBufferMemory, nullptr); // distruggiamo la memoria del buffer di staging
-    }
-
-    // in caso di immagini più complesse, come un semplice rettangolo, formato da 2 triangoli, ci servirà un buffer di indici
-    // così da evitare ridondanza ripetendo gli stessi vertici più volte
-    // la creazione del buffer di indici è simile a quella del buffer di vertici, ma con alcune differenze
-    void createIndexBuffer()
-    {
-        VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
-
-        VkBuffer stagingBuffer;
-        VkDeviceMemory stagingBufferMemory;
-        createBuffer(device, physicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
-
-        void *data;
-        vkMapMemory(device, stagingBufferMemory, 0, bufferSize, 0, &data);
-        memcpy(data, indices.data(), (size_t)bufferSize);
-        vkUnmapMemory(device, stagingBufferMemory);
-
-        // la differenza principale è che il buffer di indici deve essere creato con VK_BUFFER_USAGE_INDEX_BUFFER_BIT
-        createBuffer(device, physicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
-
-        copyBuffer(device, commandPool, graphicsQueue, stagingBuffer, indexBuffer, bufferSize);
-
-        vkDestroyBuffer(device, stagingBuffer, nullptr);
-        vkFreeMemory(device, stagingBufferMemory, nullptr);
-    }
     void createUniformBuffers()
     {
         VkDeviceSize bufferSize = sizeof(UniformBufferObject);
@@ -1538,19 +1384,33 @@ private:
         uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
         uniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
 
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+        // avendo più mesh, dobbiamo creare un buffer per ogni mesh
+        for (size_t frame = 0; frame < MAX_FRAMES_IN_FLIGHT; frame++)
         {
-            createBuffer(device, physicalDevice, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
+            uniformBuffers[frame].resize(meshes.size());
+            uniformBuffersMemory[frame].resize(meshes.size());
+            uniformBuffersMapped[frame].resize(meshes.size());
 
-            vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+            for (size_t meshIndex = 0; meshIndex < meshes.size(); meshIndex++)
+            {
+                createBuffer(device, physicalDevice, bufferSize,
+                             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                             uniformBuffers[frame][meshIndex], uniformBuffersMemory[frame][meshIndex]);
+
+                vkMapMemory(device, uniformBuffersMemory[frame][meshIndex], 0, bufferSize, 0,
+                            &uniformBuffersMapped[frame][meshIndex]);
+            }
         }
     }
 
-    void updateUniformBuffer(const uint32_t frame)
+    void updateUniformBuffer(const uint32_t frame, const uint32_t meshIndex)
     {
         // ora applico tutto al uniform buffer object
         struct UniformBufferObject ubo{};
-        ubo.sMatrices.model = glm::scale(glm::mat4(), glm::vec3(0.5f, 0.5f, 0.5f)) * cubeTransform;                                     // identità
+        float offsetX = (meshIndex == 0) ? -1.5f : 1.5f;
+        glm::mat4 model = glm::scale(glm::mat4(), glm::vec3(0.5f, 0.5f, 0.5f)) * glm::translate(glm::mat4(), glm::vec3(offsetX, 0.0f, 0.0f));
+        ubo.sMatrices.model = model * transform;
         ubo.sMatrices.view = glm::lookAt(camera.pos, camera.target, camera.up);                                                         // matrice di vista della camera
         ubo.sMatrices.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f); // proiezione prospettica
         ubo.aLight.color = ambient_light.color();
@@ -1561,23 +1421,25 @@ private:
         ubo.specLight.intensity = specular_light.intensity();
         ubo.specLight.shininess = specular_light.shininess();
         ubo.cameraPos = glm::vec4(camera.pos, 0.0f); // posizione della camera in vec4 così da essere allineata a 16 byte
-        memcpy(uniformBuffersMapped[frame], &ubo, sizeof(ubo));
+        memcpy(uniformBuffersMapped[frame][meshIndex], &ubo, sizeof(ubo));
     }
 
     // questa funzione ci permette di creare un descriptor pool, che ci serve per allocare i descriptor set
     void createDescriptorPool()
     {
         std::array<VkDescriptorPoolSize, 2> poolSizes{};
+        // Moltiplica per il numero di mesh e frame
         poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+        poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * meshes.size());
         poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+        poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * meshes.size());
 
         VkDescriptorPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        poolInfo.poolSizeCount = poolSizes.size();
+        poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
         poolInfo.pPoolSizes = poolSizes.data();
-        poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+        // Numero massimo di set = numero di frame * numero di mesh
+        poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT * meshes.size());
 
         if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS)
         {
@@ -1587,51 +1449,62 @@ private:
 
     void createDescriptorSets()
     {
-        descriptorSets.resize(meshes.size());
-        for (size_t meshIndex = 0; meshIndex < meshes.size(); ++meshIndex) {
-        std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, descriptorSetLayout);
+        size_t meshCount = meshes.size();
+        descriptorSets.resize(MAX_FRAMES_IN_FLIGHT, std::vector<VkDescriptorSet>(meshCount));
 
-        VkDescriptorSetAllocateInfo allocInfo{};
-        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocInfo.descriptorPool = descriptorPool;
-        allocInfo.descriptorSetCount = MAX_FRAMES_IN_FLIGHT;
-        allocInfo.pSetLayouts = layouts.data();
+        for (size_t frame = 0; frame < MAX_FRAMES_IN_FLIGHT; ++frame)
+        {
+            std::vector<VkDescriptorSetLayout> layouts(meshCount, descriptorSetLayout);
 
-        descriptorSets[meshIndex].resize(MAX_FRAMES_IN_FLIGHT);
-        if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets[meshIndex].data()) != VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate descriptor sets for mesh");
+            VkDescriptorSetAllocateInfo allocInfo{};
+            allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+            allocInfo.descriptorPool = descriptorPool;
+            allocInfo.descriptorSetCount = static_cast<uint32_t>(meshCount);
+            allocInfo.pSetLayouts = layouts.data();
+            if (vkAllocateDescriptorSets(device, &allocInfo, descriptorSets[frame].data()) != VK_SUCCESS)
+            {
+                throw std::runtime_error("failed to allocate descriptor sets!");
+            }
+
+            for (size_t meshIndex = 0; meshIndex < meshCount; ++meshIndex)
+            {
+                Mesh *mesh = meshes[meshIndex];
+                auto textures = mesh->getTextures();
+
+                if (textures.empty())
+                    throw std::runtime_error("Mesh has no textures!");
+
+                // Supponiamo una texture per ora
+                VkDescriptorImageInfo imageInfo = textures[0]->getDescriptorInfo();
+
+                VkDescriptorBufferInfo bufferInfo{};
+                bufferInfo.buffer = uniformBuffers[frame][meshIndex];
+                bufferInfo.offset = 0;
+                bufferInfo.range = sizeof(UniformBufferObject);
+
+                std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+
+                descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                descriptorWrites[0].dstSet = descriptorSets[frame][meshIndex];
+                descriptorWrites[0].dstBinding = 0;
+                descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                descriptorWrites[0].descriptorCount = 1;
+                descriptorWrites[0].pBufferInfo = &bufferInfo;
+
+                descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+                descriptorWrites[1].dstSet = descriptorSets[frame][meshIndex];
+                descriptorWrites[1].dstBinding = 1;
+                descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+                descriptorWrites[1].descriptorCount = 1;
+                descriptorWrites[1].pImageInfo = &imageInfo;
+
+                vkUpdateDescriptorSets(device,
+                                       static_cast<uint32_t>(descriptorWrites.size()),
+                                       descriptorWrites.data(),
+                                       0, nullptr);
+                meshes[meshIndex]->setDescriptorSet(frame, descriptorSets[frame][meshIndex]);
+            }
         }
-
-        for (size_t frame = 0; frame < MAX_FRAMES_IN_FLIGHT; ++frame) {
-            VkDescriptorBufferInfo bufferInfo{};
-            bufferInfo.buffer = uniformBuffers[frame];
-            bufferInfo.offset = 0;
-            bufferInfo.range = sizeof(UniformBufferObject);
-
-            Texture* tex = meshes[meshIndex]->getTexture(); // Assumendo che ogni mesh abbia una texture
-            VkDescriptorImageInfo imageInfo = tex->getDescriptorInfo();
-
-            std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
-
-            descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrites[0].dstSet = descriptorSets[meshIndex][frame];
-            descriptorWrites[0].dstBinding = 0;
-            descriptorWrites[0].dstArrayElement = 0;
-            descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            descriptorWrites[0].descriptorCount = 1;
-            descriptorWrites[0].pBufferInfo = &bufferInfo;
-
-            descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrites[1].dstSet = descriptorSets[meshIndex][frame];
-            descriptorWrites[1].dstBinding = 1;
-            descriptorWrites[1].dstArrayElement = 0;
-            descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            descriptorWrites[1].descriptorCount = 1;
-            descriptorWrites[1].pImageInfo = &imageInfo;
-
-            vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
-        }
-    }
     }
 
     void drawFrame()
@@ -1672,9 +1545,6 @@ private:
         vkResetCommandBuffer(commandBuffers[currentFrame], 0);
         // ora registriamo il command buffer, che è il buffer di comandi che abbiamo creato prima
         recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
-
-        // aggiorniamo il buffer di uniformi con la matrice di rotazione del triangolo
-        updateUniformBuffer(currentFrame); // aggiorna la matrice di rotazione del triangolo
 
         // per configurare la sincronizzazione usiamo il seguente struct
         VkSubmitInfo submitInfo{};
@@ -1735,12 +1605,124 @@ private:
         currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     }
 
+    void initializeMeshes()
+    {
+        std::vector<Vertex> cubo = {
+            // Davanti
+            {{-1.0f, -1.0f, 1.0f}, {0, 0, 1}, {0, 0}},
+            {{1.0f, -1.0f, 1.0f}, {0, 0, 1}, {1, 0}},
+            {{-1.0f, 1.0f, 1.0f}, {0, 0, 1}, {0, 1}},
+            {{1.0f, -1.0f, 1.0f}, {0, 0, 1}, {1, 0}},
+            {{1.0f, 1.0f, 1.0f}, {0, 0, 1}, {1, 1}},
+            {{-1.0f, 1.0f, 1.0f}, {0, 0, 1}, {0, 1}},
+
+            // Destra
+            {{1.0f, -1.0f, 1.0f}, {1, 0, 0}, {0, 0}},
+            {{1.0f, -1.0f, -1.0f}, {1, 0, 0}, {1, 0}},
+            {{1.0f, 1.0f, 1.0f}, {1, 0, 0}, {0, 1}},
+            {{1.0f, -1.0f, -1.0f}, {1, 0, 0}, {1, 0}},
+            {{1.0f, 1.0f, -1.0f}, {1, 0, 0}, {1, 1}},
+            {{1.0f, 1.0f, 1.0f}, {1, 0, 0}, {0, 1}},
+
+            // Alto
+            {{-1.0f, 1.0f, 1.0f}, {0, 1, 0}, {0, 0}},
+            {{1.0f, 1.0f, 1.0f}, {0, 1, 0}, {1, 0}},
+            {{-1.0f, 1.0f, -1.0f}, {0, 1, 0}, {0, 1}},
+            {{1.0f, 1.0f, 1.0f}, {0, 1, 0}, {1, 0}},
+            {{1.0f, 1.0f, -1.0f}, {0, 1, 0}, {1, 1}},
+            {{-1.0f, 1.0f, -1.0f}, {0, 1, 0}, {0, 1}},
+
+            // Sinistra
+            {{-1.0f, -1.0f, 1.0f}, {-1, 0, 0}, {1, 0}},
+            {{-1.0f, 1.0f, 1.0f}, {-1, 0, 0}, {1, 1}},
+            {{-1.0f, -1.0f, -1.0f}, {-1, 0, 0}, {0, 0}},
+            {{-1.0f, -1.0f, -1.0f}, {-1, 0, 0}, {0, 0}},
+            {{-1.0f, 1.0f, 1.0f}, {-1, 0, 0}, {1, 1}},
+            {{-1.0f, 1.0f, -1.0f}, {-1, 0, 0}, {0, 1}},
+
+            // Basso
+            {{-1.0f, -1.0f, 1.0f}, {0, -1, 0}, {0, 1}},
+            {{-1.0f, -1.0f, -1.0f}, {0, -1, 0}, {0, 0}},
+            {{1.0f, -1.0f, 1.0f}, {0, -1, 0}, {1, 1}},
+            {{1.0f, -1.0f, 1.0f}, {0, -1, 0}, {1, 1}},
+            {{-1.0f, -1.0f, -1.0f}, {0, -1, 0}, {0, 0}},
+            {{1.0f, -1.0f, -1.0f}, {0, -1, 0}, {1, 0}},
+
+            // Dietro
+            {{-1.0f, -1.0f, -1.0f}, {0, 0, -1}, {1, 0}},
+            {{-1.0f, 1.0f, -1.0f}, {0, 0, -1}, {1, 1}},
+            {{1.0f, -1.0f, -1.0f}, {0, 0, -1}, {0, 0}},
+            {{1.0f, -1.0f, -1.0f}, {0, 0, -1}, {0, 0}},
+            {{-1.0f, 1.0f, -1.0f}, {0, 0, -1}, {1, 1}},
+            {{1.0f, 1.0f, -1.0f}, {0, 0, -1}, {0, 1}}};
+
+        std::vector<Vertex> octahdron = {
+            // Alto Davanti
+            {{-1.0f, 0.0f, 1.0f}, {0, 0.71, 0.71}, {0, 0}},
+            {{1.0f, 0.0f, 1.0f}, {0, 0.71, 0.71}, {1, 0}},
+            {{0.0f, 1.0f, 0.0f}, {0, 0.71, 0.71}, {0.5, 1}},
+
+            // Alto Destra
+            {{1.0f, 0.0f, 1.0f}, {0.71, 0.71, 0}, {0, 0}},
+            {{1.0f, 0.0f, -1.0f}, {0.71, 0.71, 0}, {1, 0}},
+            {{0.0f, 1.0f, 0.0f}, {0.71, 0.71, 0}, {0.5, 1}},
+
+            // Alto Sinistra
+            {{-1.0f, 0.0f, -1.0f}, {-0.71, 0.71, 0}, {0, 0}},
+            {{-1.0f, 0.0f, 1.0f}, {-0.71, 0.71, 0}, {1, 0}},
+            {{0.0f, 1.0f, 0.0f}, {-0.71, 0.71, 0}, {0.5, 1}},
+
+            // Alto Dietro
+            {{-1.0f, 0.0f, -1.0f}, {0, 0.71, -0.71}, {1, 0}},
+            {{0.0f, 1.0f, 0.0f}, {0, 0.71, -0.71}, {0.5, 1}},
+            {{1.0f, 0.0f, -1.0f}, {0, 0.71, -0.71}, {0, 0}},
+
+            // Basso Davanti
+            {{-1.0f, 0.0f, 1.0f}, {0, -0.71, 0.71}, {0, 1}},
+            {{0.0f, -1.0f, 0.0f}, {0, -0.71, 0.71}, {0.5, 0}},
+            {{1.0f, 0.0f, 1.0f}, {0, -0.71, 0.71}, {1, 1}},
+
+            // Basso Destra
+            {{1.0f, 0.0f, 1.0f}, {0.71, -0.71, 0}, {0, 1}},
+            {{0.0f, -1.0f, 0.0f}, {0.71, -0.71, 0}, {0.5, 0}},
+            {{1.0f, 0.0f, -1.0f}, {0.71, -0.71, 0}, {1, 1}},
+
+            // Basso Sinistra
+            {{-1.0f, 0.0f, -1.0f}, {-0.71, -0.71, 0}, {0, 1}},
+            {{0.0f, -1.0f, 0.0f}, {-0.71, -0.71, 0}, {0.5, 0}},
+            {{-1.0f, 0.0f, 1.0f}, {-0.71, -0.71, 0}, {1, 1}},
+
+            // Basso Dietro
+            {{-1.0f, 0.0f, -1.0f}, {0, -0.71, -0.71}, {1, 1}},
+            {{1.0f, 0.0f, -1.0f}, {0, -0.71, -0.71}, {0, 1}},
+            {{0.0f, -1.0f, 0.0f}, {0, -0.71, -0.71}, {0.5, 0}}};
+
+        //ribalto la y di ogni texCoord per evitare problemi di texture
+        for (auto &vertex : cubo)
+        {
+            vertex.texCoord.y = 1.0f - vertex.texCoord.y;
+        }
+        for (auto &vertex : octahdron)
+        {
+            vertex.texCoord.y = 1.0f - vertex.texCoord.y;
+        }
+        // ora possiamo creare le mesh, composte dagli array di vertici che abbiamo creato prima
+        meshes.resize(2);
+        meshes[0] = new Mesh(device, physicalDevice, commandPool, graphicsQueue, cubo);
+        meshes[1] = new Mesh(device, physicalDevice, commandPool, graphicsQueue, octahdron);
+
+        // ora possiamo aggiungere le texture alle mesh, in questo caso abbiamo 2 texture per la prima mesh e 1 per la seconda
+        meshes[0]->addTexture(textures["face"]);
+        meshes[1]->addTexture(textures["gold"]);
+        meshes[1]->addTexture(textures["holo"]);
+    }
+
     void initializeTextures()
     {
-        textures.resize(3);
-        textures[0] = new Texture(device, physicalDevice, commandPool, graphicsQueue, "textures/texture.jpg");
-        textures[1] = new Texture(device, physicalDevice, commandPool, graphicsQueue, "textures/texture2.jpg");
-        textures[2] = new Texture(device, physicalDevice, commandPool, graphicsQueue, "textures/texture3.jpg");
+        // per comodità, ho creato una mappa di texture, in modo da poterle usare più facilmente senza ricordare l'indice esatto di ogni texture
+        textures["face"] = new Texture(device, physicalDevice, commandPool, graphicsQueue, "textures/face.png");
+        textures["gold"] = new Texture(device, physicalDevice, commandPool, graphicsQueue, "textures/gold.png");
+        textures["holo"] = new Texture(device, physicalDevice, commandPool, graphicsQueue, "textures/holo.png");
     }
 
     //  il semaforo serve per sincronizzare le operazioni tra la CPU e la GPU, in modo che la CPU non invii comandi alla GPU prima che sia pronta a riceverli

@@ -7,7 +7,7 @@ layout(location = 2) in vec2 texCoord;
 //viene usato flat in modo da non far mescolare i colori
 layout(location = 0) out vec3 fragNormal;
 
-layout(location = 1) out vec3 fragPosition;
+layout(location = 1) out vec3 fragPos;
 
 layout(location = 2) out vec2 fragTextCoord;
 
@@ -55,7 +55,7 @@ layout(binding = 0) uniform UniformBufferObject{
 void main()
 {
     gl_Position = ubo.scene.proj * ubo.scene.view * ubo.scene.transform * vec4(inPosition, 1.0);
-    fragTexCoord = texCoord;
+    fragTextCoord = texCoord;
     fragNormal = (transpose(inverse(ubo.scene.transform)) * vec4(normal,0.0)).xyz;
-    fragPosition = (ubo.scene.transform * vec4(inPosition,1.0)).xyz;
+    fragPos = (ubo.scene.transform * vec4(inPosition,1.0)).xyz;
 }

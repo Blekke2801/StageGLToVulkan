@@ -1,6 +1,17 @@
 #pragma once
 #include <vulkan/vulkan.h>
+#include <glm/glm.hpp>
+#include <array>
 
+struct Vertex
+{
+    glm::vec3 pos;
+    glm::vec3 normal;
+    glm::vec2 texCoord;
+
+    static VkVertexInputBindingDescription getBindingDescription();
+    static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions();
+};
 // funzione per creare un buffer
 // e allocare memoria per il buffer
 void createBuffer(VkDevice device, VkPhysicalDevice physicalDevice,
@@ -25,10 +36,9 @@ void createImage(VkDevice device, VkPhysicalDevice physicalDevice,
                  VkMemoryPropertyFlags properties,
                  VkImage &image, VkDeviceMemory &imageMemory);
 
-                 
 void transitionImageLayout(VkDevice device, VkCommandPool commandPool, VkQueue graphicsQueue,
-                             VkImage image, VkFormat format,
-                             VkImageLayout oldLayout, VkImageLayout newLayout);
+                           VkImage image, VkFormat format,
+                           VkImageLayout oldLayout, VkImageLayout newLayout);
 
 // funzione per copiare i dati da un buffer ad un image
 void copyBufferToImage(VkDevice device, VkCommandPool commandPool, VkQueue graphicsQueue,
