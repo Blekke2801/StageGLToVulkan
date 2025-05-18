@@ -31,7 +31,7 @@
 #include <string>
 
 #ifdef NDEBUG
-const bool enableValidationLayers = false;
+const bool enableValidationLayers = true;
 #else
 const bool enableValidationLayers = true;
 #endif
@@ -79,7 +79,7 @@ struct UniformBufferObject
         float shininess;
         float _pad4[2]; // in modo da allineare a 16 byte
     } specLight;
-    glm::vec4 cameraPos;                // posizione della camera
+    glm::vec4 cameraPos; // posizione della camera
 };
 // ho creato una mia struttura per la camera
 struct MyCamera
@@ -93,6 +93,8 @@ struct MyCamera
 
 glm::mat4 transform = glm::mat4(1.0f); // matrice di trasformazione del cubo
 
+std::vector<uint32_t> meshToRender = {0}; // vettore di indici delle mesh da renderizzare
+uint32_t meshCount = 1;             // numero di mesh
 struct QueueFamilyIndices
 {
     std::optional<uint32_t> graphicsFamily;
@@ -235,6 +237,14 @@ private:
             case GLFW_KEY_7:
             case GLFW_KEY_8:
                 lightControls(key);
+                break;
+            case GLFW_KEY_T:
+            case GLFW_KEY_K:
+            case GLFW_KEY_G:
+            case GLFW_KEY_B:
+            case GLFW_KEY_F:
+            // case GLFW_KEY_M:
+                modelSwitcher(key);
                 break;
             default:
                 break;
@@ -394,6 +404,49 @@ private:
         }
     }
 
+    static void modelSwitcher(int key)
+    {
+        meshToRender.clear(); // svuotiamo il vettore delle mesh da renderizzare
+        meshCount = 0;        // resettiamo il contatore delle mesh
+        meshToRender.resize(1);
+        switch (key)
+        {
+        case GLFW_KEY_T:
+            // carichiamo il modello del teapot
+            
+            meshToRender.push_back(0);
+            meshCount = 1; // settiamo il contatore delle mesh a 1
+            break;
+        case GLFW_KEY_K:
+            // carichiamo il modello del teschio
+            meshToRender.push_back(1);
+            meshCount = 1; // settiamo il contatore delle mesh a 1
+            break;
+        case GLFW_KEY_G:
+            // carichiamo il modello del drago
+            meshToRender.push_back(2);
+            meshCount = 1; // settiamo il contatore delle mesh a 1
+            break;
+        case GLFW_KEY_B:
+            // carichiamo il modello della scarpone
+            meshToRender.push_back(3);
+            meshCount = 1; // settiamo il contatore delle mesh a 1
+            break;
+        case GLFW_KEY_F:
+            // carichiamo il modello del fiore
+            meshToRender.push_back(4);
+            break;
+        // case GLFW_KEY_M:
+        //     // carichiamo il modello del marius
+        //     meshToRender.resize(6);
+        //     for (int i = 0; i < 5; i++)
+        //     {
+        //         meshToRender.push_back(5 + i);
+        //     }
+        //     meshCount = 6; // settiamo il contatore delle mesh a 6
+        //     break;
+        }
+    }
     void initVulkan()
     {
         createInstance();
@@ -1362,13 +1415,13 @@ private:
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
         // avendo più mesh, dobbiamo usare un ciclo per disegnarle tutte
-        for (size_t i = 0; i < meshes.size(); ++i)
+        for (size_t i = 0; i < meshToRender.size(); ++i)
         {
-            Mesh *mesh = meshes[i];
+            Mesh *mesh = meshes[meshToRender[i]];
             mesh->draw(commandBuffer, currentFrame, pipelineLayout,
                        [&](uint32_t subIndex)
                        {
-                           updateUniformBuffer(currentFrame, i);
+                           updateUniformBuffer(currentFrame);
                        });
         }
 
@@ -1393,12 +1446,12 @@ private:
         // avendo più mesh, dobbiamo creare un buffer per ogni mesh
         for (size_t frame = 0; frame < MAX_FRAMES_IN_FLIGHT; frame++)
         {
-            uniformBuffers[frame].resize(meshes.size());
-            uniformBuffersMemory[frame].resize(meshes.size());
-            uniformBuffersMapped[frame].resize(meshes.size());
-
-            for (size_t meshIndex = 0; meshIndex < meshes.size(); meshIndex++)
-            {
+            uniformBuffers[frame].resize(1);
+            uniformBuffersMemory[frame].resize(1);
+            uniformBuffersMapped[frame].resize(1);
+            int meshIndex = 0;
+            // for (size_t meshIndex = 0; meshIndex < meshToRender.size(); meshIndex++)
+            // {
                 createBuffer(device, physicalDevice, bufferSize,
                              VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                              VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -1406,16 +1459,15 @@ private:
 
                 vkMapMemory(device, uniformBuffersMemory[frame][meshIndex], 0, bufferSize, 0,
                             &uniformBuffersMapped[frame][meshIndex]);
-            }
+            // }
         }
     }
 
-    void updateUniformBuffer(const uint32_t frame, const uint32_t meshIndex)
+    void updateUniformBuffer(const uint32_t frame, const uint32_t meshIndex = 0)
     {
         // ora applico tutto al uniform buffer object
         struct UniformBufferObject ubo{};
-        float offsetX = (meshIndex == 0) ? -1.5f : 1.5f;
-        glm::mat4 model = glm::scale(glm::mat4(), glm::vec3(0.5f, 0.5f, 0.5f)) * glm::translate(glm::mat4(), glm::vec3(offsetX, 0.0f, 0.0f));
+        glm::mat4 model = glm::scale(glm::mat4(), glm::vec3(0.5f, 0.5f, 0.5f));
         ubo.sMatrices.model = model * transform;
         ubo.sMatrices.view = glm::lookAt(camera.pos, camera.target, camera.up);                                                         // matrice di vista della camera
         ubo.sMatrices.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f); // proiezione prospettica
@@ -1504,12 +1556,22 @@ private:
                 // ricordiamo che dobbiamo anche dire quali indici hanno le texture delle mesh
 
                 std::vector<VkDescriptorImageInfo> imageInfos;
-                imageInfos.push_back(textures["face"]->getDescriptorInfo());
-                imageInfos.push_back(textures["gold"]->getDescriptorInfo());
-                imageInfos.push_back(textures["holo"]->getDescriptorInfo());
+                int i = 0;
+                for (auto [name, texture] : textures)
+                {
+                    texture->setIndex(i);
+                    imageInfos.push_back(texture->getDescriptorInfo());
+                    // ora devo scorrere tutte le mesh per settare l'indice della texture
+                    // tanto in caso non sia presente nella mesh, non succede nulla, viene solo ignorata
+                    for(auto mesh : meshes)
+                    {
+                        mesh->setTextureIndex(name, i);
+                    }
+                    i++;
+                }
 
                 VkDescriptorBufferInfo bufferInfo{};
-                bufferInfo.buffer = uniformBuffers[frame][meshIndex];
+                bufferInfo.buffer = uniformBuffers[frame][0];
                 bufferInfo.offset = 0;
                 bufferInfo.range = sizeof(UniformBufferObject);
 
@@ -1638,128 +1700,155 @@ private:
 
     void initializeMeshes()
     {
-        std::vector<Vertex> cubo = {
-            // Davanti
-            {{-1.0f, -1.0f, 1.0f}, {0, 0, 1}, {0, 0}},
-            {{1.0f, -1.0f, 1.0f}, {0, 0, 1}, {1, 0}},
-            {{-1.0f, 1.0f, 1.0f}, {0, 0, 1}, {0, 1}},
-            {{1.0f, -1.0f, 1.0f}, {0, 0, 1}, {1, 0}},
-            {{1.0f, 1.0f, 1.0f}, {0, 0, 1}, {1, 1}},
-            {{-1.0f, 1.0f, 1.0f}, {0, 0, 1}, {0, 1}},
+        // std::vector<Vertex> cubo = {
+        //     // Davanti
+        //     {{-1.0f, -1.0f, 1.0f}, {0, 0, 1}, {0, 0}},
+        //     {{1.0f, -1.0f, 1.0f}, {0, 0, 1}, {1, 0}},
+        //     {{-1.0f, 1.0f, 1.0f}, {0, 0, 1}, {0, 1}},
+        //     {{1.0f, -1.0f, 1.0f}, {0, 0, 1}, {1, 0}},
+        //     {{1.0f, 1.0f, 1.0f}, {0, 0, 1}, {1, 1}},
+        //     {{-1.0f, 1.0f, 1.0f}, {0, 0, 1}, {0, 1}},
 
-            // Destra
-            {{1.0f, -1.0f, 1.0f}, {1, 0, 0}, {0, 0}},
-            {{1.0f, -1.0f, -1.0f}, {1, 0, 0}, {1, 0}},
-            {{1.0f, 1.0f, 1.0f}, {1, 0, 0}, {0, 1}},
-            {{1.0f, -1.0f, -1.0f}, {1, 0, 0}, {1, 0}},
-            {{1.0f, 1.0f, -1.0f}, {1, 0, 0}, {1, 1}},
-            {{1.0f, 1.0f, 1.0f}, {1, 0, 0}, {0, 1}},
+        //     // Destra
+        //     {{1.0f, -1.0f, 1.0f}, {1, 0, 0}, {0, 0}},
+        //     {{1.0f, -1.0f, -1.0f}, {1, 0, 0}, {1, 0}},
+        //     {{1.0f, 1.0f, 1.0f}, {1, 0, 0}, {0, 1}},
+        //     {{1.0f, -1.0f, -1.0f}, {1, 0, 0}, {1, 0}},
+        //     {{1.0f, 1.0f, -1.0f}, {1, 0, 0}, {1, 1}},
+        //     {{1.0f, 1.0f, 1.0f}, {1, 0, 0}, {0, 1}},
 
-            // Alto
-            {{-1.0f, 1.0f, 1.0f}, {0, 1, 0}, {0, 0}},
-            {{1.0f, 1.0f, 1.0f}, {0, 1, 0}, {1, 0}},
-            {{-1.0f, 1.0f, -1.0f}, {0, 1, 0}, {0, 1}},
-            {{1.0f, 1.0f, 1.0f}, {0, 1, 0}, {1, 0}},
-            {{1.0f, 1.0f, -1.0f}, {0, 1, 0}, {1, 1}},
-            {{-1.0f, 1.0f, -1.0f}, {0, 1, 0}, {0, 1}},
+        //     // Alto
+        //     {{-1.0f, 1.0f, 1.0f}, {0, 1, 0}, {0, 0}},
+        //     {{1.0f, 1.0f, 1.0f}, {0, 1, 0}, {1, 0}},
+        //     {{-1.0f, 1.0f, -1.0f}, {0, 1, 0}, {0, 1}},
+        //     {{1.0f, 1.0f, 1.0f}, {0, 1, 0}, {1, 0}},
+        //     {{1.0f, 1.0f, -1.0f}, {0, 1, 0}, {1, 1}},
+        //     {{-1.0f, 1.0f, -1.0f}, {0, 1, 0}, {0, 1}},
 
-            // Sinistra
-            {{-1.0f, -1.0f, 1.0f}, {-1, 0, 0}, {1, 0}},
-            {{-1.0f, 1.0f, 1.0f}, {-1, 0, 0}, {1, 1}},
-            {{-1.0f, -1.0f, -1.0f}, {-1, 0, 0}, {0, 0}},
-            {{-1.0f, -1.0f, -1.0f}, {-1, 0, 0}, {0, 0}},
-            {{-1.0f, 1.0f, 1.0f}, {-1, 0, 0}, {1, 1}},
-            {{-1.0f, 1.0f, -1.0f}, {-1, 0, 0}, {0, 1}},
+        //     // Sinistra
+        //     {{-1.0f, -1.0f, 1.0f}, {-1, 0, 0}, {1, 0}},
+        //     {{-1.0f, 1.0f, 1.0f}, {-1, 0, 0}, {1, 1}},
+        //     {{-1.0f, -1.0f, -1.0f}, {-1, 0, 0}, {0, 0}},
+        //     {{-1.0f, -1.0f, -1.0f}, {-1, 0, 0}, {0, 0}},
+        //     {{-1.0f, 1.0f, 1.0f}, {-1, 0, 0}, {1, 1}},
+        //     {{-1.0f, 1.0f, -1.0f}, {-1, 0, 0}, {0, 1}},
 
-            // Basso
-            {{-1.0f, -1.0f, 1.0f}, {0, -1, 0}, {0, 1}},
-            {{-1.0f, -1.0f, -1.0f}, {0, -1, 0}, {0, 0}},
-            {{1.0f, -1.0f, 1.0f}, {0, -1, 0}, {1, 1}},
-            {{1.0f, -1.0f, 1.0f}, {0, -1, 0}, {1, 1}},
-            {{-1.0f, -1.0f, -1.0f}, {0, -1, 0}, {0, 0}},
-            {{1.0f, -1.0f, -1.0f}, {0, -1, 0}, {1, 0}},
+        //     // Basso
+        //     {{-1.0f, -1.0f, 1.0f}, {0, -1, 0}, {0, 1}},
+        //     {{-1.0f, -1.0f, -1.0f}, {0, -1, 0}, {0, 0}},
+        //     {{1.0f, -1.0f, 1.0f}, {0, -1, 0}, {1, 1}},
+        //     {{1.0f, -1.0f, 1.0f}, {0, -1, 0}, {1, 1}},
+        //     {{-1.0f, -1.0f, -1.0f}, {0, -1, 0}, {0, 0}},
+        //     {{1.0f, -1.0f, -1.0f}, {0, -1, 0}, {1, 0}},
 
-            // Dietro
-            {{-1.0f, -1.0f, -1.0f}, {0, 0, -1}, {1, 0}},
-            {{-1.0f, 1.0f, -1.0f}, {0, 0, -1}, {1, 1}},
-            {{1.0f, -1.0f, -1.0f}, {0, 0, -1}, {0, 0}},
-            {{1.0f, -1.0f, -1.0f}, {0, 0, -1}, {0, 0}},
-            {{-1.0f, 1.0f, -1.0f}, {0, 0, -1}, {1, 1}},
-            {{1.0f, 1.0f, -1.0f}, {0, 0, -1}, {0, 1}}};
+        //     // Dietro
+        //     {{-1.0f, -1.0f, -1.0f}, {0, 0, -1}, {1, 0}},
+        //     {{-1.0f, 1.0f, -1.0f}, {0, 0, -1}, {1, 1}},
+        //     {{1.0f, -1.0f, -1.0f}, {0, 0, -1}, {0, 0}},
+        //     {{1.0f, -1.0f, -1.0f}, {0, 0, -1}, {0, 0}},
+        //     {{-1.0f, 1.0f, -1.0f}, {0, 0, -1}, {1, 1}},
+        //     {{1.0f, 1.0f, -1.0f}, {0, 0, -1}, {0, 1}}};
 
-        std::vector<Vertex> octahdron = {
-            // Alto Davanti
-            {{-1.0f, 0.0f, 1.0f}, {0, 0.71, 0.71}, {0, 0}},
-            {{1.0f, 0.0f, 1.0f}, {0, 0.71, 0.71}, {1, 0}},
-            {{0.0f, 1.0f, 0.0f}, {0, 0.71, 0.71}, {0.5, 1}},
+        // std::vector<Vertex> octahdron = {
+        //     // Alto Davanti
+        //     {{-1.0f, 0.0f, 1.0f}, {0, 0.71, 0.71}, {0, 0}},
+        //     {{1.0f, 0.0f, 1.0f}, {0, 0.71, 0.71}, {1, 0}},
+        //     {{0.0f, 1.0f, 0.0f}, {0, 0.71, 0.71}, {0.5, 1}},
 
-            // Alto Destra
-            {{1.0f, 0.0f, 1.0f}, {0.71, 0.71, 0}, {0, 0}},
-            {{1.0f, 0.0f, -1.0f}, {0.71, 0.71, 0}, {1, 0}},
-            {{0.0f, 1.0f, 0.0f}, {0.71, 0.71, 0}, {0.5, 1}},
+        //     // Alto Destra
+        //     {{1.0f, 0.0f, 1.0f}, {0.71, 0.71, 0}, {0, 0}},
+        //     {{1.0f, 0.0f, -1.0f}, {0.71, 0.71, 0}, {1, 0}},
+        //     {{0.0f, 1.0f, 0.0f}, {0.71, 0.71, 0}, {0.5, 1}},
 
-            // Alto Sinistra
-            {{-1.0f, 0.0f, -1.0f}, {-0.71, 0.71, 0}, {0, 0}},
-            {{-1.0f, 0.0f, 1.0f}, {-0.71, 0.71, 0}, {1, 0}},
-            {{0.0f, 1.0f, 0.0f}, {-0.71, 0.71, 0}, {0.5, 1}},
+        //     // Alto Sinistra
+        //     {{-1.0f, 0.0f, -1.0f}, {-0.71, 0.71, 0}, {0, 0}},
+        //     {{-1.0f, 0.0f, 1.0f}, {-0.71, 0.71, 0}, {1, 0}},
+        //     {{0.0f, 1.0f, 0.0f}, {-0.71, 0.71, 0}, {0.5, 1}},
 
-            // Alto Dietro
-            {{-1.0f, 0.0f, -1.0f}, {0, 0.71, -0.71}, {1, 0}},
-            {{0.0f, 1.0f, 0.0f}, {0, 0.71, -0.71}, {0.5, 1}},
-            {{1.0f, 0.0f, -1.0f}, {0, 0.71, -0.71}, {0, 0}},
+        //     // Alto Dietro
+        //     {{-1.0f, 0.0f, -1.0f}, {0, 0.71, -0.71}, {1, 0}},
+        //     {{0.0f, 1.0f, 0.0f}, {0, 0.71, -0.71}, {0.5, 1}},
+        //     {{1.0f, 0.0f, -1.0f}, {0, 0.71, -0.71}, {0, 0}},
 
-            // Basso Davanti
-            {{-1.0f, 0.0f, 1.0f}, {0, -0.71, 0.71}, {0, 1}},
-            {{0.0f, -1.0f, 0.0f}, {0, -0.71, 0.71}, {0.5, 0}},
-            {{1.0f, 0.0f, 1.0f}, {0, -0.71, 0.71}, {1, 1}},
+        //     // Basso Davanti
+        //     {{-1.0f, 0.0f, 1.0f}, {0, -0.71, 0.71}, {0, 1}},
+        //     {{0.0f, -1.0f, 0.0f}, {0, -0.71, 0.71}, {0.5, 0}},
+        //     {{1.0f, 0.0f, 1.0f}, {0, -0.71, 0.71}, {1, 1}},
 
-            // Basso Destra
-            {{1.0f, 0.0f, 1.0f}, {0.71, -0.71, 0}, {0, 1}},
-            {{0.0f, -1.0f, 0.0f}, {0.71, -0.71, 0}, {0.5, 0}},
-            {{1.0f, 0.0f, -1.0f}, {0.71, -0.71, 0}, {1, 1}},
+        //     // Basso Destra
+        //     {{1.0f, 0.0f, 1.0f}, {0.71, -0.71, 0}, {0, 1}},
+        //     {{0.0f, -1.0f, 0.0f}, {0.71, -0.71, 0}, {0.5, 0}},
+        //     {{1.0f, 0.0f, -1.0f}, {0.71, -0.71, 0}, {1, 1}},
 
-            // Basso Sinistra
-            {{-1.0f, 0.0f, -1.0f}, {-0.71, -0.71, 0}, {0, 1}},
-            {{0.0f, -1.0f, 0.0f}, {-0.71, -0.71, 0}, {0.5, 0}},
-            {{-1.0f, 0.0f, 1.0f}, {-0.71, -0.71, 0}, {1, 1}},
+        //     // Basso Sinistra
+        //     {{-1.0f, 0.0f, -1.0f}, {-0.71, -0.71, 0}, {0, 1}},
+        //     {{0.0f, -1.0f, 0.0f}, {-0.71, -0.71, 0}, {0.5, 0}},
+        //     {{-1.0f, 0.0f, 1.0f}, {-0.71, -0.71, 0}, {1, 1}},
 
-            // Basso Dietro
-            {{-1.0f, 0.0f, -1.0f}, {0, -0.71, -0.71}, {1, 1}},
-            {{1.0f, 0.0f, -1.0f}, {0, -0.71, -0.71}, {0, 1}},
-            {{0.0f, -1.0f, 0.0f}, {0, -0.71, -0.71}, {0.5, 0}}};
+        //     // Basso Dietro
+        //     {{-1.0f, 0.0f, -1.0f}, {0, -0.71, -0.71}, {1, 1}},
+        //     {{1.0f, 0.0f, -1.0f}, {0, -0.71, -0.71}, {0, 1}},
+        //     {{0.0f, -1.0f, 0.0f}, {0, -0.71, -0.71}, {0.5, 0}}};
 
-        // ribalto la y di ogni texCoord per evitare problemi di texture
-        for (auto &vertex : cubo)
-        {
-            vertex.texCoord.y = 1.0f - vertex.texCoord.y;
-        }
-        // essenfo che voglio la parte sotto ribaltata, ribalto solo la parte alta
-        for (int i = 0; i < octahdron.size() / 2; i++)
-        {
-            octahdron[i].texCoord.y = 1.0f - octahdron[i].texCoord.y;
-        }
+        // // ribalto la y di ogni texCoord per evitare problemi di texture
+        // for (auto &vertex : cubo)
+        // {
+        //     vertex.texCoord.y = 1.0f - vertex.texCoord.y;
+        // }
+        // // essendo che voglio la parte sotto ribaltata, ribalto solo la parte alta
+        // for (int i = 0; i < octahdron.size() / 2; i++)
+        // {
+        //     octahdron[i].texCoord.y = 1.0f - octahdron[i].texCoord.y;
+        // }
         // ora possiamo creare le mesh, composte dagli array di vertici che abbiamo creato prima
-        meshes.resize(2);
-        meshes[0] = new Mesh(device, physicalDevice, commandPool, graphicsQueue, cubo);
-        meshes[1] = new Mesh(device, physicalDevice, commandPool, graphicsQueue, octahdron);
-
-        // ora possiamo aggiungere le texture alle mesh, in questo caso abbiamo 2 texture per la prima mesh e 1 per la seconda
-        meshes[0]->addTexture("face", 0);
-        textures["face"]->setIndex(0);
-        meshes[1]->addTexture("gold", 1);
-        textures["gold"]->setIndex(1);
-        meshes[1]->addSubMesh(0, 12, 1);
-        meshes[1]->addTexture("holo", 2);
-        textures["holo"]->setIndex(2);
-        meshes[1]->addSubMesh(12, 12, 2);
+        meshes.resize(5);
+        for (int i = 0; i < 11; i++)
+        {
+            meshes[i] = new Mesh(device, physicalDevice, commandPool, graphicsQueue);
+        }
+        //ora che abbiamo creato le mesh, carichiamo i file .obj
+        meshes[0]->loadFromFile("models/teapot.obj");
+        meshes[1]->loadFromFile("models/skull.obj");
+        meshes[2]->loadFromFile("models/dragon.obj");
+        //essendo che i primi 3 modelli non hanno una loro texture, gli imposto la texture bianca
+        for(int i = 0; i < 3; i++)
+        {
+            meshes[i]->addTexture("blank", -1);
+        }
+        // ora carico le texture dei modelli che hanno una loro texture
+        meshes[3]->loadFromFile("models/boot/boot.obj");
+        meshes[3]->addTexture("boot", -1);
+        meshes[4]->loadFromFile("models/flower/flower.obj");
+        meshes[4]->addTexture("flower", -1);
+        std::cout << "modelli caricati" << std::endl;
+        //ora carico tutte le parti di marius (non importa l'ordine delle singole, l'importante è che partano dal 5)
+        // meshes[5]->loadFromFile("models/marius/eyebrows.obj");
+        // meshes[5]->addTexture("mariusLash", -1);
+        // meshes[6]->loadFromFile("models/marius/eyelashesLower.obj");
+        // meshes[6]->addTexture("mariusLash", -1);
+        // meshes[7]->loadFromFile("models/marius/eyelashesUpper.obj");
+        // meshes[7]->addTexture("mariusLash", -1);
+        // meshes[8]->loadFromFile("models/marius/eyes.obj");
+        // meshes[8]->addTexture("mariusEye", -1);
+        // meshes[9]->loadFromFile("models/marius/hair_plate.obj");
+        // meshes[9]->addTexture("mariusHPlate", -1);
+        // meshes[10]->loadFromFile("models/marius/hair_vac.obj");
+        // meshes[10]->addTexture("mariusHVac", -1);
+        // meshes[11]->loadFromFile("models/marius/head.obj");
+        // meshes[11]->addTexture("mariusHead", -1);
     }
 
     void initializeTextures()
     {
         // per comodità, ho creato una mappa di texture, in modo da poterle usare più facilmente senza ricordare l'indice esatto di ogni texture
-        textures["face"] = new Texture(device, physicalDevice, commandPool, graphicsQueue, "textures/face.png");
-        textures["gold"] = new Texture(device, physicalDevice, commandPool, graphicsQueue, "textures/gold.png");
-        textures["holo"] = new Texture(device, physicalDevice, commandPool, graphicsQueue, "textures/holo.png");
+        textures["blank"] = new Texture(device, physicalDevice, commandPool, graphicsQueue, "moreTextures/white.png");
+        textures["boot"] = new Texture(device, physicalDevice, commandPool, graphicsQueue, "models/boot/d-1.png");
+        textures["flower"] = new Texture(device, physicalDevice, commandPool, graphicsQueue, "models/flower/12301_Flower_diff.jpg");
+        textures["mariusEye"] = new Texture(device, physicalDevice, commandPool, graphicsQueue, "models/marius/mrus_eyeball_iris_diffout.png");
+        textures["mariusLash"] = new Texture(device, physicalDevice, commandPool, graphicsQueue, "models/marius/mrus_eyelash_diffout.png");
+        textures["mariusHPlate"] = new Texture(device, physicalDevice, commandPool, graphicsQueue, "models/marius/mrus_hair_plate_diffout.png");
+        textures["mariusHVac"] = new Texture(device, physicalDevice, commandPool, graphicsQueue, "models/marius/mrus_hair_vac_diffout.png");
+        textures["mariusHead"] = new Texture(device, physicalDevice, commandPool, graphicsQueue, "models/marius/mrus_head_clean_diffout.png");
     }
 
     //  il semaforo serve per sincronizzare le operazioni tra la CPU e la GPU, in modo che la CPU non invii comandi alla GPU prima che sia pronta a riceverli

@@ -6,6 +6,8 @@
 #include <map>
 #include <string>
 #include <functional>
+#include "assimp/scene.h"       // Assimp output data structure
+#include "assimp/postprocess.h" // Assimp post processing flags
 class Texture;
 
 struct SubMesh
@@ -39,6 +41,7 @@ public:
     
     const std::vector<SubMesh> &getSubMeshes() const;
     void addSubMesh(uint32_t offset, uint32_t count, int texIdx);
+    void loadFromFile(const std::string &filename, unsigned int flags = aiProcess_FlipUVs);
     void draw(VkCommandBuffer cmd, uint32_t frameIndex,
           VkPipelineLayout pipelineLayout,
           std::function<void(uint32_t submeshIndex)> updateUniformCallback);

@@ -1,6 +1,8 @@
 #include "texture.h"
 #include "bufferUtils.h"
 #include "mesh.h"
+#include "assimp/Importer.hpp" // Assimp Importer object
+#include <iostream>
 
 Mesh::Mesh(VkDevice device, VkPhysicalDevice physicalDevice,
            VkCommandPool commandPool, VkQueue graphicsQueue,
@@ -72,6 +74,8 @@ void Mesh::setTextureIndex(std::string name, int index)
 // questa funzione ci permette di creare il vertex Buffer
 void Mesh::createVertexBuffer()
 {
+    
+    std::cout << "Caricamento vertici: " << vertices.size() << std::endl;
     VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size(); // la dimensione del buffer è la somma della dimensione di tutti i vertici
 
     // per ottimizzare le prestazioni, usiamo un buffer di staging, che è un buffer temporaneo che viene usato per copiare i dati nella GPU, è come un ponte
@@ -147,6 +151,48 @@ const std::vector<SubMesh> &Mesh::getSubMeshes() const
 void Mesh::addSubMesh(uint32_t offset, uint32_t count, int texIdx)
 {
     subMeshes.push_back({offset, count, texIdx}); // aggiungiamo il submesh
+}
+
+void Mesh::loadFromFile(const std::string &filename, unsigned int flags)
+{
+    Assimp::Importer importer;
+    const aiScene *scene = importer.ReadFile(filename, flags);
+
+    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
+    {
+        std::cerr << "ERROR::ASSIMP::" << importer.GetErrorString() << std::endl;
+        return;
+    }
+    // Assimp ci da la possibilità di caricare più mesh, ma noi ne consideriamo solo una
+    const aiMesh *mesh = scene->mMeshes[0];
+    std::cout << "Caricamento mesh: " << mesh->mName.C_Str() << " di " << filename << std::endl;
+    vertices.resize(mesh->mNumVertices);
+    indices.resize(mesh->mNumFaces * 3); // ogni faccia ha 3 indici
+
+    for (unsigned int i = 0; i < mesh->mNumVertices; i++)
+    {
+        vertices[i].pos = glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z);
+        vertices[i].normal = glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
+        if (mesh->HasTextureCoords(0))
+        {
+            vertices[i].texCoord = glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y);
+        }
+        else
+        {
+            vertices[i].texCoord = glm::vec2(0.0f, 0.0f);
+        }
+    }
+    std::cout << "primo for: " << mesh->mNumFaces << " di " << filename << std::endl;
+
+    for (unsigned int i = 0; i < mesh->mNumFaces; i++)
+    {
+        const aiFace &face = mesh->mFaces[i];
+        indices[i * 3] = face.mIndices[0];
+        indices[i * 3 + 1] = face.mIndices[1];
+        indices[i * 3 + 2] = face.mIndices[2];
+    }
+    createVertexBuffer();
+    createIndexBuffer();
 }
 
 void Mesh::draw(VkCommandBuffer cmd, uint32_t frameIndex,

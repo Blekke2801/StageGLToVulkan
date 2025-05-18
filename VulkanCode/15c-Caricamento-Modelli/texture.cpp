@@ -38,6 +38,7 @@ void Texture::createTextureImage(const char *filename)
     stbi_uc *pixels = stbi_load(filename, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
     VkDeviceSize imageSize = texWidth * texHeight * 4;
 
+    std::cout << "Caricamento texture: " << filename << std::endl;
     if (!pixels)
     {
         throw std::runtime_error("failed to load texture image!");
