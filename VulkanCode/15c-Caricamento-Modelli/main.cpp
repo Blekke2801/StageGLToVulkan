@@ -92,7 +92,8 @@ struct MyCamera
     float pitch;
 };
 
-glm::mat4 transform = glm::mat4(1.0f); // matrice di trasformazione del cubo
+glm::mat4 baseTransform = glm::mat4(1.0f); // matrice di trasformazione del cubo
+glm::mat4 userTransform = glm::mat4(1.0f); // matrice di trasformazione del cubo
 
 std::vector<uint32_t> meshToRender = {}; // vettore di indici delle mesh da renderizzare
 uint32_t meshCount = 0;                  // numero di mesh
@@ -338,6 +339,7 @@ private:
             camera.up = glm::vec3(0.0f, 1.0f, 0.0f);
             camera.yaw = 0.0f;
             camera.pitch = -90.0f;
+            userTransform = glm::mat4(1.0f); // reset della matrice di trasformazione
             break;
         }
     }
@@ -346,23 +348,23 @@ private:
     {
         float _speed = 10.0f;
 
+        // così da mantenere gli assi "stabili"
+        glm::vec3 baseRight = glm::vec3(baseTransform[0]);   // asse X del modello
+        glm::vec3 baseUp = glm::vec3(baseTransform[1]);      // asse Y del modello
+
         switch (key)
         {
         case GLFW_KEY_W:
-            // ruotiamo il cubo in avanti
-            transform = glm::rotate(transform, glm::radians(_speed), glm::vec3(1.0f, 0.0f, 0.0f));
-            break;
-        case GLFW_KEY_A:
-            // ruotiamo il cubo a sinistra
-            transform = glm::rotate(transform, glm::radians(_speed), glm::vec3(0.0f, 1.0f, 0.0f));
+            userTransform = glm::rotate(glm::mat4(1.0f), -glm::radians(_speed), baseRight) * userTransform;
             break;
         case GLFW_KEY_S:
-            // ruotiamo il cubo indietro
-            transform = glm::rotate(transform, -glm::radians(_speed), glm::vec3(1.0f, 0.0f, 0.0f));
+            userTransform = glm::rotate(glm::mat4(1.0f), glm::radians(_speed), baseRight) * userTransform;
+            break;
+        case GLFW_KEY_A:
+            userTransform = glm::rotate(glm::mat4(1.0f), -glm::radians(_speed), baseUp) * userTransform;
             break;
         case GLFW_KEY_D:
-            // ruotiamo il cubo a destra
-            transform = glm::rotate(transform, -glm::radians(_speed), glm::vec3(0.0f, 1.0f, 0.0f));
+            userTransform = glm::rotate(glm::mat4(1.0f), glm::radians(_speed), baseUp) * userTransform;
             break;
         }
     }
@@ -414,44 +416,44 @@ private:
         {
         case GLFW_KEY_T:
             // carichiamo il modello del teapot
-            cameraControls(GLFW_KEY_SPACE);                                          // reset della camera
-            transform = glm::translate(glm::mat4(), glm::vec3(0.0f, -1.6f, -10.0f)); // scalatura del teapot
+            cameraControls(GLFW_KEY_SPACE);                                              // reset della camera
+            baseTransform = glm::translate(glm::mat4(), glm::vec3(0.0f, -1.6f, -10.0f)); // scalatura del teapot
             meshToRender = {0};
             meshCount = 1; // settiamo il contatore delle mesh a 1
             break;
         case GLFW_KEY_K:
             // carichiamo il modello del teschio
             cameraControls(GLFW_KEY_SPACE); // reset della camera
-            transform = glm::translate(glm::mat4(), glm::vec3(0.0f, -5.0f, -17.0f));
+            baseTransform = glm::translate(glm::mat4(), glm::vec3(0.0f, -5.0f, -17.0f));
             meshToRender = {1};
             meshCount = 1; // settiamo il contatore delle mesh a 1
             break;
         case GLFW_KEY_G:
             // carichiamo il modello del drago
             cameraControls(GLFW_KEY_SPACE); // reset della camera
-            transform = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, -4.0f));
+            baseTransform = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, -4.0f));
             meshToRender = {2};
             meshCount = 1; // settiamo il contatore delle mesh a 1
             break;
         case GLFW_KEY_B:
             // carichiamo il modello della scarpone
             cameraControls(GLFW_KEY_SPACE); // reset della camera
-            transform = glm::translate(glm::mat4(), glm::vec3(0.0f, -10.0f, -70.0f));
+            baseTransform = glm::translate(glm::mat4(), glm::vec3(0.0f, -10.0f, -70.0f));
             meshToRender = {3};
             meshCount = 1; // settiamo il contatore delle mesh a 1
             break;
         case GLFW_KEY_F:
             // carichiamo il modello del fiore
             cameraControls(GLFW_KEY_SPACE); // reset della camera
-            transform = glm::translate(glm::mat4(), glm::vec3(0.0f, -4.0f, -15.0f));
-            transform = glm::rotate(transform, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f)); // rotazione del teapot
+            baseTransform = glm::translate(glm::mat4(), glm::vec3(0.0f, -4.0f, -15.0f)) *
+                            glm::rotate(glm::mat4(), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
             meshToRender = {4};
             break;
         case GLFW_KEY_M:
             // carichiamo il modello del marius
-            cameraControls(GLFW_KEY_SPACE);                                                          // reset della camera
-            transform = glm::rotate(glm::mat4(), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f)); // rotazione del teapot
-            transform = glm::translate(transform, glm::vec3(0.0f, -1.7f, -2.8f));
+            cameraControls(GLFW_KEY_SPACE);
+            baseTransform = glm::translate(glm::mat4(), glm::vec3(0.0f, -1.7f, 3.0f)) *
+                            glm::rotate(glm::mat4(), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
             meshToRender = {5, 6, 7, 8, 9, 10, 11};
             meshCount = 7;
             break;
@@ -1118,7 +1120,7 @@ private:
         // essendo che noi usiamo solo un colore, non ci interessa, quindi lo lasciamo a VK_FALSE, ma per completezza mostrerò tutti i parametri
         VkPipelineColorBlendAttachmentState colorBlendAttachment{};
         colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-        colorBlendAttachment.blendEnable = VK_FALSE; 
+        colorBlendAttachment.blendEnable = VK_FALSE;
         colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
         colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
@@ -1205,9 +1207,9 @@ private:
             throw std::runtime_error("failed to create graphics pipeline!");
         }
         // ora creiamo la pipeline per gli oggetti trasparenti
-        depthStencil.depthWriteEnable = VK_FALSE; // disabilitiamo il depth write
+        depthStencil.depthWriteEnable = VK_FALSE;   // disabilitiamo il depth write
         colorBlendAttachment.blendEnable = VK_TRUE; // in modo da gestire texture trasparenti di marius
-        rasterizer.cullMode = VK_CULL_MODE_NONE; // disabilitiamo il culling
+        rasterizer.cullMode = VK_CULL_MODE_NONE;    // disabilitiamo il culling
         if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &transparentPipeline) != VK_SUCCESS)
         {
             throw std::runtime_error("failed to create graphics pipeline!");
@@ -1486,7 +1488,7 @@ private:
             if (transparentMeshIndices.count(index))
             {
                 // Accumula trasparenti per ordinamento
-                glm::vec3 center =  glm::vec3(transform[3]); // o modelloMatrix[3]
+                glm::vec3 center = glm::vec3(baseTransform[3]); // o modelloMatrix[3]
                 float distanceSq = glm::distance(cameraPos, center);
                 transparentSorted.emplace_back(distanceSq, index);
             }
@@ -1562,7 +1564,7 @@ private:
     {
         // ora applico tutto al uniform buffer object
         struct UniformBufferObject ubo{};
-        ubo.sMatrices.model = transform;
+        ubo.sMatrices.model = baseTransform * userTransform;                                                                             // matrice di trasformazione del modello
         ubo.sMatrices.view = glm::lookAt(camera.pos, camera.target, camera.up);                                                          // matrice di vista della camera
         ubo.sMatrices.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 255.0f); // proiezione prospettica
         ubo.aLight.color = ambient_light.color();
@@ -1981,7 +1983,7 @@ private:
         meshToRender.resize(1);
         meshToRender.push_back(0);
         meshCount = 1;
-        transform = glm::translate(glm::mat4(), glm::vec3(0.0f, -1.6f, -10.0f));
+        baseTransform = glm::translate(glm::mat4(), glm::vec3(0.0f, -1.6f, -10.0f));
     }
 
     void initializeTextures()
