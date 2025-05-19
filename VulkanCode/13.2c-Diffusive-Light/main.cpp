@@ -40,7 +40,7 @@ const uint32_t HEIGHT = 768;
 const uint32_t MAX_FRAMES_IN_FLIGHT = 2; // numero di frame in volo
 auto previousTime = std::chrono::high_resolution_clock::now();
 // essendo che ora abbiamo anche la luce, dobbiamo aggiungere i suoi parametri al uniform buffer object
-//ogni strutture deve essere allineata a 16 byte, quindi dobbiamo usare alignas(16) per le strutture e usare anche dei padding
+// ogni strutture deve essere allineata a 16 byte, quindi dobbiamo usare alignas(16) per le strutture e usare anche dei padding
 // per allineare i dati
 struct UniformBufferObject
 {
@@ -52,9 +52,9 @@ struct UniformBufferObject
     } sMatrices;
     struct alignas(16) AmbientLightStruct // struttura per la luce ambientale
     {
-        glm::vec3 color;          // colore della luce ambientale
-        float intensity;          // intensità della luce ambientale
-    } aLight;                     // luce ambientale
+        glm::vec3 color;                      // colore della luce ambientale
+        float intensity;                      // intensità della luce ambientale
+    } aLight;                                 // luce ambientale
     struct alignas(16) DirectionalLightStruct // struttura per la luce direzionale
     {
         glm::vec3 color;
@@ -64,7 +64,7 @@ struct UniformBufferObject
     } dirLight;
     struct alignas(16) DiffusiveLightStruct // struttura per la luce diffusa
     {
-        float intensity; 
+        float intensity;
         float _pad3[3];
     } diffLight;
 };
@@ -197,12 +197,12 @@ struct MyCamera camera{
     glm::vec3(0.0f, 0.0f, 4.0f), // posizione della camera
     glm::vec3(0.0f, 0.0f, 0.0f), // target della camera
     glm::vec3(0.0f, 1.0f, 0.0f), // vettore up della camera
-    0.0f, -90.0f};               // angoli di yaw e pitch della camera
+    -90.0f, 0.0f};               // angoli di yaw e pitch della camera
 
 // creiamo un oggetto per la luce ambientale
-AmbientLight ambient_light(glm::vec3(1,1,1),0.2);
+AmbientLight ambient_light(glm::vec3(1, 1, 1), 0.2);
 
-DirectionalLight directional_light(glm::vec3(1,1,1), glm::vec3(0,0,-1));
+DirectionalLight directional_light(glm::vec3(1, 1, 1), glm::vec3(0, 0, -1));
 
 DiffusiveLight diffusive_light(1.0f);
 class InformaticaGraficaApplication
@@ -279,6 +279,10 @@ private:
         glfwSetKeyCallback(window, key_callback);
         glfwSetCursorPosCallback(window, mouse_callback);
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        int width, height;
+        glfwGetFramebufferSize(window, &width, &height);
+        glfwSetCursorPos(window, width / 2.0, height / 2.0);
+        glfwSetCursorPosCallback(window, mouse_callback);
         if (glfwRawMouseMotionSupported())
             glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
     }
@@ -320,20 +324,17 @@ private:
 
     static void mouse_callback(GLFWwindow *window, double xpos, double ypos)
     {
-        static bool firstMouse = true;
-        static float lastX;
-        static float lastY;
-
-        if (firstMouse)
-        {
-            lastX = xpos;
-            lastY = ypos;
-            firstMouse = false;
-            return;
-        }
+        static float lastX = 0.0f;
+        static float lastY = 0.0f;
 
         float xoffset = xpos - lastX;
         float yoffset = lastY - ypos; // invertito per l'asse Y
+        if (std::abs(xoffset) > 100 || std::abs(yoffset) > 100)
+        {
+            lastX = xpos;
+            lastY = ypos;
+            return;
+        }
 
         lastX = xpos;
         lastY = ypos;
@@ -356,7 +357,6 @@ private:
         direction.y = sin(glm::radians(camera.pitch));
         direction.z = sin(glm::radians(camera.yaw)) * cos(glm::radians(camera.pitch));
         camera.target = camera.pos + glm::normalize(direction);
-
     }
 
     static void cameraControls(int key)

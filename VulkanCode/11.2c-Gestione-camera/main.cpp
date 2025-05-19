@@ -156,7 +156,7 @@ struct MyCamera camera{
     glm::vec3(0.0f, 0.0f, 2.0f), // posizione della camera
     glm::vec3(0.0f, 0.0f, 0.0f), // target della camera
     glm::vec3(0.0f, 1.0f, 0.0f), // vettore up della camera
-    0.0f, -90.0f};               // angoli di yaw e pitch della camera
+    -90.0f, 0.0f};             // angoli di yaw e pitch della camera
 
 class InformaticaGraficaApplication
 {
@@ -232,6 +232,10 @@ private:
         glfwSetKeyCallback(window, key_callback);
         glfwSetCursorPosCallback(window, mouse_callback);
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        int width, height;
+        glfwGetFramebufferSize(window, &width, &height);
+        glfwSetCursorPos(window, width / 2.0, height / 2.0);
+        glfwSetCursorPosCallback(window, mouse_callback);
         if (glfwRawMouseMotionSupported())
             glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
     }
@@ -261,20 +265,17 @@ private:
 
     static void mouse_callback(GLFWwindow *window, double xpos, double ypos)
     {
-        static bool firstMouse = true;
-        static float lastX;
-        static float lastY;
-
-        if (firstMouse)
-        {
-            lastX = xpos;
-            lastY = ypos;
-            firstMouse = false;
-            return;
-        }
+        static float lastX = 0.0f;
+        static float lastY = 0.0f;
 
         float xoffset = xpos - lastX;
         float yoffset = lastY - ypos; // invertito per l'asse Y
+        if (std::abs(xoffset) > 100 || std::abs(yoffset) > 100)
+        {
+            lastX = xpos;
+            lastY = ypos;
+            return;
+        }
 
         lastX = xpos;
         lastY = ypos;
