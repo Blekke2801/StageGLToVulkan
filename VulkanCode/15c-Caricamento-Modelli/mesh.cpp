@@ -75,7 +75,6 @@ void Mesh::setTextureIndex(std::string name, int index)
 void Mesh::createVertexBuffer()
 {
     
-    std::cout << "Caricamento vertici: " << vertices.size() << std::endl;
     VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size(); // la dimensione del buffer è la somma della dimensione di tutti i vertici
 
     // per ottimizzare le prestazioni, usiamo un buffer di staging, che è un buffer temporaneo che viene usato per copiare i dati nella GPU, è come un ponte
@@ -165,7 +164,6 @@ void Mesh::loadFromFile(const std::string &filename, unsigned int flags)
     }
     // Assimp ci da la possibilità di caricare più mesh, ma noi ne consideriamo solo una
     const aiMesh *mesh = scene->mMeshes[0];
-    std::cout << "Caricamento mesh: " << mesh->mName.C_Str() << " di " << filename << std::endl;
     vertices.resize(mesh->mNumVertices);
     indices.resize(mesh->mNumFaces * 3); // ogni faccia ha 3 indici
 
@@ -182,7 +180,6 @@ void Mesh::loadFromFile(const std::string &filename, unsigned int flags)
             vertices[i].texCoord = glm::vec2(0.0f, 0.0f);
         }
     }
-    std::cout << "primo for: " << mesh->mNumFaces << " di " << filename << std::endl;
 
     for (unsigned int i = 0; i < mesh->mNumFaces; i++)
     {
@@ -206,6 +203,11 @@ void Mesh::draw(VkCommandBuffer cmd, uint32_t frameIndex,
     VkDescriptorSet descriptorSet = getDescriptorSet(frameIndex);
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
                             pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+    bool hasIndexBuffer = getIndexCount() > 0;
+    if (hasIndexBuffer)
+    {
+        vkCmdBindIndexBuffer(cmd, getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+    }
 
     if (!subMeshes.empty())
     {
@@ -213,17 +215,36 @@ void Mesh::draw(VkCommandBuffer cmd, uint32_t frameIndex,
         {
             const auto &sub = subMeshes[i];
             uint32_t index = static_cast<uint32_t>(sub.textureIndex);
-            //questo mi permette di passare l'indice della texture alla shader
+            // questo mi permette di passare l'indice della texture alla shader
             vkCmdPushConstants(cmd, pipelineLayout,
                                VK_SHADER_STAGE_FRAGMENT_BIT,
                                0, sizeof(uint32_t), &index);
             updateUniformCallback(i); // aggiorna ubo con il textureIndex giusto
-            vkCmdDraw(cmd, sub.indexCount, 1, sub.indexOffset, 0);
+            if (hasIndexBuffer)
+            {
+                vkCmdDrawIndexed(cmd, sub.indexCount, 1, sub.indexOffset, 0, 0);
+            }
+            else
+            {
+                vkCmdDraw(cmd, sub.indexCount, 1, sub.indexOffset, 0);
+            }
         }
     }
     else
     {
+        uint32_t index = static_cast<uint32_t>(textures.begin()->second);
+        // questo mi permette di passare l'indice della texture alla shader
+        vkCmdPushConstants(cmd, pipelineLayout,
+                           VK_SHADER_STAGE_FRAGMENT_BIT,
+                           0, sizeof(uint32_t), &index);
         updateUniformCallback(0); // se non ci sono submesh, usa quello principale
-        vkCmdDraw(cmd, getVertexCount(), 1, 0, 0);
+        if (hasIndexBuffer)
+        {
+            vkCmdDrawIndexed(cmd, getIndexCount(), 1, 0, 0, 0);
+        }
+        else
+        {
+            vkCmdDraw(cmd, getVertexCount(), 1, 0, 0);
+        }
     }
 }

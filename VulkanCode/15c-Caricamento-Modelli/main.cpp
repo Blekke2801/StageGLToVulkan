@@ -29,6 +29,7 @@
 #include <chrono>
 #include <map>
 #include <string>
+#include <unordered_set>
 
 #ifdef NDEBUG
 const bool enableValidationLayers = true;
@@ -43,7 +44,7 @@ const uint32_t WIDTH = 1024;
 const uint32_t HEIGHT = 768;
 
 const uint32_t MAX_FRAMES_IN_FLIGHT = 2; // numero di frame in volo
-const uint32_t MAX_TEXTURES = 8;         // numero massimo di texture
+const uint32_t MAX_TEXTURES = 16;        // numero massimo di texture
 auto previousTime = std::chrono::high_resolution_clock::now();
 // essendo che ora abbiamo anche la luce, dobbiamo aggiungere i suoi parametri al uniform buffer object
 // ogni strutture deve essere allineata a 16 byte, quindi dobbiamo usare alignas(16) per le strutture e usare anche dei padding
@@ -93,8 +94,8 @@ struct MyCamera
 
 glm::mat4 transform = glm::mat4(1.0f); // matrice di trasformazione del cubo
 
-std::vector<uint32_t> meshToRender = {0}; // vettore di indici delle mesh da renderizzare
-uint32_t meshCount = 1;             // numero di mesh
+std::vector<uint32_t> meshToRender = {}; // vettore di indici delle mesh da renderizzare
+uint32_t meshCount = 0;                  // numero di mesh
 struct QueueFamilyIndices
 {
     std::optional<uint32_t> graphicsFamily;
@@ -123,10 +124,9 @@ AmbientLight ambient_light(glm::vec3(1, 1, 1), 0.2); // colore e intensità dell
 
 PointLight point_light(glm::vec3(1, 1, 1), glm::vec3(0, 0, -1)); // colore e direzione della luce direzionale
 
-DiffusiveLight diffusive_light(1.0f); // intensità della luce diffusa
+DiffusiveLight diffusive_light(0.7f); // intensità della luce diffusa
 
-SpecularLight specular_light(1, 30); // intensità e shininess della luce speculare
-
+SpecularLight specular_light(0.3f, 32.0f); // intensità e shininess della luce speculare
 class InformaticaGraficaApplication
 {
 public:
@@ -160,7 +160,8 @@ private:
     VkDescriptorPool descriptorPool;                          // pool di descrittori Vulkan
     std::vector<std::vector<VkDescriptorSet>> descriptorSets; // set di descrittori Vulkan
     VkPipelineLayout pipelineLayout;                          // layout della pipeline Vulkan
-    VkPipeline graphicsPipeline;
+    VkPipeline opaquePipeline;                                // pipeline Vulkan per gli oggetti opachi
+    VkPipeline transparentPipeline;                           // pipeline Vulkan per gli oggetti trasparenti
 
     std::vector<VkFramebuffer> swapChainFramebuffers;              // framebuffer della swap chain Vulkan
     VkCommandPool commandPool;                                     // pool di comandi Vulkan
@@ -168,6 +169,11 @@ private:
     std::vector<std::vector<VkBuffer>> uniformBuffers;             // buffer uniformi Vulkan
     std::vector<std::vector<VkDeviceMemory>> uniformBuffersMemory; // memoria dei buffer uniformi Vulkan
     std::vector<std::vector<void *>> uniformBuffersMapped;         // puntatori ai buffer uniformi Vulkan
+
+    // depth image
+    VkImage depthImage;
+    VkDeviceMemory depthImageMemory;
+    VkImageView depthImageView;
 
     // sto usando dei vettori in caso ci siano dei frame aggiuntivi, ma essendo che non ci sono, si puà usare anche un solo elemento
     // i vettori adesso sono solo per scopo didattico, in un'applicazione reale si userebbero i frame in volo per gestire più frame contemporaneamente
@@ -243,7 +249,7 @@ private:
             case GLFW_KEY_G:
             case GLFW_KEY_B:
             case GLFW_KEY_F:
-            // case GLFW_KEY_M:
+            case GLFW_KEY_M:
                 modelSwitcher(key);
                 break;
             default:
@@ -299,11 +305,7 @@ private:
         //   per farlo usiamo la funzione std::chrono::high_resolution_clock::now() che ci permette di ottenere il tempo attuale
         //   e la funzione std::chrono::duration<float>(currentTime - previousTime).count() che ci permette di calcolare il delta time
         //   così da rendere il triangolo animato in modo fluido e non a scatti
-        auto currentTime = std::chrono::high_resolution_clock::now();
-
-        float deltaTime = std::chrono::duration<float>(currentTime - previousTime).count();
-        previousTime = currentTime;
-        float _speed = 0.05f;
+        float _speed = 0.5f;
         // calcola il vettore perpendicolare alla direzione della camera
         glm::vec3 direction = glm::normalize(camera.target - camera.pos);
         glm::vec3 right = glm::normalize(glm::cross(direction, camera.up));
@@ -311,23 +313,23 @@ private:
         {
         case GLFW_KEY_UP:
             // spostiamo la camera in avanti nella direzione in cui sta guardando
-            camera.pos += direction * _speed * deltaTime;
-            camera.target += direction * _speed * deltaTime;
+            camera.pos += direction * _speed;
+            camera.target += direction * _speed;
             break;
         case GLFW_KEY_DOWN:
             // spostiamo la camera indietro nella direzione opposta a quella in cui sta guardando
-            camera.pos -= direction * _speed * deltaTime;
-            camera.target -= direction * _speed * deltaTime;
+            camera.pos -= direction * _speed;
+            camera.target -= direction * _speed;
             break;
         case GLFW_KEY_LEFT:
             // spostiamo la camera a sinistra nella direzione perpendicolare alla direzione in cui sta guardando
-            camera.pos -= right * _speed * deltaTime;
-            camera.target -= right * _speed * deltaTime;
+            camera.pos -= right * _speed;
+            camera.target -= right * _speed;
             break;
         case GLFW_KEY_RIGHT:
             // spostiamo la camera a destra nella direzione opposta a quella in cui sta guardando
-            camera.pos += right * _speed * deltaTime;
-            camera.target += right * _speed * deltaTime;
+            camera.pos += right * _speed;
+            camera.target += right * _speed;
             break;
         case GLFW_KEY_SPACE:
             // reset della camera
@@ -408,43 +410,51 @@ private:
     {
         meshToRender.clear(); // svuotiamo il vettore delle mesh da renderizzare
         meshCount = 0;        // resettiamo il contatore delle mesh
-        meshToRender.resize(1);
         switch (key)
         {
         case GLFW_KEY_T:
             // carichiamo il modello del teapot
-            
-            meshToRender.push_back(0);
+            cameraControls(GLFW_KEY_SPACE);                                          // reset della camera
+            transform = glm::translate(glm::mat4(), glm::vec3(0.0f, -1.6f, -10.0f)); // scalatura del teapot
+            meshToRender = {0};
             meshCount = 1; // settiamo il contatore delle mesh a 1
             break;
         case GLFW_KEY_K:
             // carichiamo il modello del teschio
-            meshToRender.push_back(1);
+            cameraControls(GLFW_KEY_SPACE); // reset della camera
+            transform = glm::translate(glm::mat4(), glm::vec3(0.0f, -5.0f, -17.0f));
+            meshToRender = {1};
             meshCount = 1; // settiamo il contatore delle mesh a 1
             break;
         case GLFW_KEY_G:
             // carichiamo il modello del drago
-            meshToRender.push_back(2);
+            cameraControls(GLFW_KEY_SPACE); // reset della camera
+            transform = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, -4.0f));
+            meshToRender = {2};
             meshCount = 1; // settiamo il contatore delle mesh a 1
             break;
         case GLFW_KEY_B:
             // carichiamo il modello della scarpone
-            meshToRender.push_back(3);
+            cameraControls(GLFW_KEY_SPACE); // reset della camera
+            transform = glm::translate(glm::mat4(), glm::vec3(0.0f, -10.0f, -70.0f));
+            meshToRender = {3};
             meshCount = 1; // settiamo il contatore delle mesh a 1
             break;
         case GLFW_KEY_F:
             // carichiamo il modello del fiore
-            meshToRender.push_back(4);
+            cameraControls(GLFW_KEY_SPACE); // reset della camera
+            transform = glm::translate(glm::mat4(), glm::vec3(0.0f, -4.0f, -15.0f));
+            transform = glm::rotate(transform, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f)); // rotazione del teapot
+            meshToRender = {4};
             break;
-        // case GLFW_KEY_M:
-        //     // carichiamo il modello del marius
-        //     meshToRender.resize(6);
-        //     for (int i = 0; i < 5; i++)
-        //     {
-        //         meshToRender.push_back(5 + i);
-        //     }
-        //     meshCount = 6; // settiamo il contatore delle mesh a 6
-        //     break;
+        case GLFW_KEY_M:
+            // carichiamo il modello del marius
+            cameraControls(GLFW_KEY_SPACE);                                                          // reset della camera
+            transform = glm::rotate(glm::mat4(), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f)); // rotazione del teapot
+            transform = glm::translate(transform, glm::vec3(0.0f, -1.7f, -2.8f));
+            meshToRender = {5, 6, 7, 8, 9, 10, 11};
+            meshCount = 7;
+            break;
         }
     }
     void initVulkan()
@@ -458,14 +468,14 @@ private:
         createRenderPass();
         createDescriptorSetLayout();
         createGraphicsPipeline();
-        createFramebuffers();
         createCommandPool();
+        createDepthResources();
+        createFramebuffers();
         initializeTextures();
         initializeMeshes();
         createUniformBuffers();
         createDescriptorPool();
         createDescriptorSets();
-        // createIndexBuffer();
         createCommandBuffers();
         createSyncObjects();
     }
@@ -942,6 +952,10 @@ private:
 
     void cleanupSwapChain()
     {
+        vkDestroyImageView(device, depthImageView, nullptr);
+        vkDestroyImage(device, depthImage, nullptr);
+        vkFreeMemory(device, depthImageMemory, nullptr);
+
         for (auto framebuffer : swapChainFramebuffers)
         {
             vkDestroyFramebuffer(device, framebuffer, nullptr);
@@ -972,6 +986,7 @@ private:
 
         createSwapChain();
         createImageViews();
+        createDepthResources(); // prima di ricreare i framebuffer, dobbiamo ricreare le depth resources
         createFramebuffers();
     }
 
@@ -981,7 +996,7 @@ private:
 
         for (size_t i = 0; i < swapChainImages.size(); i++)
         {
-            swapChainImageViews[i] = createImageView(device, swapChainImages[i], swapChainImageFormat);
+            swapChainImageViews[i] = createImageView(device, swapChainImages[i], swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
         }
     }
 
@@ -1103,13 +1118,26 @@ private:
         // essendo che noi usiamo solo un colore, non ci interessa, quindi lo lasciamo a VK_FALSE, ma per completezza mostrerò tutti i parametri
         VkPipelineColorBlendAttachmentState colorBlendAttachment{};
         colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-        colorBlendAttachment.blendEnable = VK_FALSE;
-        colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;  // opzionale
-        colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO; // opzionale
-        colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;             // opzionale
-        colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;  // opzionale
-        colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO; // opzionale
-        colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;             // opzionale
+        colorBlendAttachment.blendEnable = VK_FALSE; 
+        colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+        colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+        colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
+        // ora abbiamo anche la depth, quindi dobbiamo settare anche il depth testing
+        VkPipelineDepthStencilStateCreateInfo depthStencil{};
+        depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        depthStencil.depthTestEnable = VK_TRUE; // attiva il depth testing
+        depthStencil.depthWriteEnable = VK_TRUE;
+        depthStencil.depthCompareOp = VK_COMPARE_OP_LESS; // confronta i pixel in base alla loro profondità, in questo caso vogliamo che il pixel più vicino venga disegnato
+        depthStencil.depthBoundsTestEnable = VK_FALSE;    // questa opzione è per testare i limiti di profondità, non ci interessa in questo caso
+        depthStencil.minDepthBounds = 0.0f;               // Optional
+        depthStencil.maxDepthBounds = 1.0f;               // Optional
+        depthStencil.stencilTestEnable = VK_FALSE;        // non usiamo lo stencil testing, quindi lo lasciamo a VK_FALSE
+        depthStencil.front = {};                          // Optional
+        depthStencil.back = {};                           // Optional
 
         // questo struct è per settare altri parametri del color blending
         VkPipelineColorBlendStateCreateInfo colorBlending{};
@@ -1164,17 +1192,26 @@ private:
         pipelineInfo.pRasterizationState = &rasterizer;
         pipelineInfo.pMultisampleState = &multisampling;
         pipelineInfo.pColorBlendState = &colorBlending;
+        pipelineInfo.pDepthStencilState = &depthStencil;
         pipelineInfo.pDynamicState = &dynamicState;
         pipelineInfo.layout = pipelineLayout;
         pipelineInfo.renderPass = renderPass;
         pipelineInfo.subpass = 0;
         pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
+        // creo la pipeline per gli oggetti opachi
+        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &opaquePipeline) != VK_SUCCESS)
         {
             throw std::runtime_error("failed to create graphics pipeline!");
         }
-
+        // ora creiamo la pipeline per gli oggetti trasparenti
+        depthStencil.depthWriteEnable = VK_FALSE; // disabilitiamo il depth write
+        colorBlendAttachment.blendEnable = VK_TRUE; // in modo da gestire texture trasparenti di marius
+        rasterizer.cullMode = VK_CULL_MODE_NONE; // disabilitiamo il culling
+        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &transparentPipeline) != VK_SUCCESS)
+        {
+            throw std::runtime_error("failed to create graphics pipeline!");
+        }
         // infine, come spiegato prima, distruggiamo gli shader module
         shaderClass.disable();
     }
@@ -1231,22 +1268,38 @@ private:
 
         colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-
-        // questi è per usare texture come colori (non lo usiamo per ora), verrà descritto meglio nel progetto delle texture
         colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+        VkAttachmentDescription depthAttachment{};
+        depthAttachment.format = findDepthFormat();
+        depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+        depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
         // questo struct indica l'attachment dei sottopassi di rendering
         VkAttachmentReference colorAttachmentRef{};
         colorAttachmentRef.attachment = 0; // abbiamo solo 1 attachment, quindi l'indice è 0
         colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+        VkAttachmentReference depthAttachmentRef{};
+        depthAttachmentRef.attachment = 1;
+        depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
         VkSubpassDescription subpass{};
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
         subpass.colorAttachmentCount = 1;
         subpass.pColorAttachments = &colorAttachmentRef;
+        subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
+        // uniamo i 2 attachment in un array, in questo caso 2, ma potrebbero essere anche di più
+        std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
         // questo struct specifica le dipendenze tra i sottopassi di rendering
+        // ora che abbiamo aggiunto anche il depth attachment, dobbiamo aggiungere le dipendenze tra i sottopassi di rendering
         VkSubpassDependency dependency{};
         // questi primi 2 parametri specificano gli indici dei sottopassi di rendering che dipendono l'uno dall'altro
         //  VK_SUBPASS_EXTERNAL si riferisce al sottopasso prima o dopo il passo di rendering a seconda di dove viene piazzato
@@ -1256,17 +1309,14 @@ private:
 
         // questi 2 parametri specificano dove aspettare che i dati siano disponibili e in che stage dobbiamo eseguire le operazioni
         // essendo che prima di poter colorare l'immagine, dobbiamo avere il disegno pronto, dobbiamo aspettare in quello stage
-        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.srcAccessMask = 0;
-
-        // qui indichiamo le operazioni che devono aspettare per essere eseguite
-        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
         VkRenderPassCreateInfo renderPassInfo{};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        renderPassInfo.attachmentCount = 1;
-        renderPassInfo.pAttachments = &colorAttachment;
+        renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+        renderPassInfo.pAttachments = attachments.data();
         renderPassInfo.subpassCount = 1;
         renderPassInfo.pSubpasses = &subpass;
 
@@ -1285,17 +1335,19 @@ private:
         // come si vede nelle righe seguenti, creare i frambuffer è molto semplice
         swapChainFramebuffers.resize(swapChainImageViews.size());
 
+        // aggiungiamo anche qui il depth attachment
         for (size_t i = 0; i < swapChainImageViews.size(); i++)
         {
-            VkImageView attachments[] = {
-                swapChainImageViews[i]};
+            std::array<VkImageView, 2> attachments = {
+                swapChainImageViews[i],
+                depthImageView};
 
             // questo struct specifica i parametri del framebuffer, in questo caso abbiamo solo 1 attachment
             VkFramebufferCreateInfo framebufferInfo{};
             framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
             framebufferInfo.renderPass = renderPass;
-            framebufferInfo.attachmentCount = 1;
-            framebufferInfo.pAttachments = attachments;
+            framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+            framebufferInfo.pAttachments = attachments.data();
             framebufferInfo.width = swapChainExtent.width;
             framebufferInfo.height = swapChainExtent.height;
             framebufferInfo.layers = 1;
@@ -1381,10 +1433,15 @@ private:
         renderPassInfo.renderArea.offset = {0, 0};
         renderPassInfo.renderArea.extent = swapChainExtent;
 
-        // colore di sfondo (nero con opacità 1.0f)
-        VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-        renderPassInfo.clearValueCount = 1;
-        renderPassInfo.pClearValues = &clearColor;
+        // essendo che ora abbiamo anche la profondità come attachment che possiede il clear value, dobbiamo specificare anche il clear value per la profondità
+        // IMPORTANTE: l'ordine dei clear values deve corrispondere all'ordine degli attachment
+        //  quindi il primo è il colore e il secondo è la profondità
+        std::array<VkClearValue, 2> clearValues{};
+        clearValues[0].color = {{0.0f, 0.0f, 0.0f, 1.0f}}; //  colore di sfondo (nero con opacità 1.0f)
+        clearValues[1].depthStencil = {1.0f, 0};           // la profondità in vulkan va da 0 a 1, quindi 1.0f è il massimo
+
+        renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+        renderPassInfo.pClearValues = clearValues.data();
 
         // ora che abbiamo settato tutti i parametri, possiamo finalmente iniziare il render pass
         // il primo parametro della funzione deve essere sempre il buffer di comandi
@@ -1395,7 +1452,8 @@ private:
         vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
         // ora possiamo collegare la pipeline grafica al buffer di comandi
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+        // spostato nel ciclo di draw perché ora abbiamo più pipeline una per le mesh trasparenti e una per quelle opache
+        // vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
         // ora dobbiamo specificare la viewport, cioè la parte della finestra in cui vogliamo disegnare
         // ricordiamo che dobbiamo ribaltare le coordinate Y, quindi l'altezza sarà negativa
@@ -1415,14 +1473,51 @@ private:
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
         // avendo più mesh, dobbiamo usare un ciclo per disegnarle tutte
+        std::unordered_set<size_t> transparentMeshIndices = {6, 7, 9, 10, 11};
+
+        std::vector<std::pair<float, size_t>> transparentSorted;
+        glm::vec3 cameraPos = glm::vec3(camera.pos);
+
+        // Ciclo ottimizzato
         for (size_t i = 0; i < meshToRender.size(); ++i)
         {
-            Mesh *mesh = meshes[meshToRender[i]];
-            mesh->draw(commandBuffer, currentFrame, pipelineLayout,
-                       [&](uint32_t subIndex)
-                       {
-                           updateUniformBuffer(currentFrame);
-                       });
+            size_t index = meshToRender[i];
+
+            if (transparentMeshIndices.count(index))
+            {
+                // Accumula trasparenti per ordinamento
+                glm::vec3 center =  glm::vec3(transform[3]); // o modelloMatrix[3]
+                float distanceSq = glm::distance(cameraPos, center);
+                transparentSorted.emplace_back(distanceSq, index);
+            }
+            else
+            {
+                // Disegna subito gli opachi
+                vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, opaquePipeline);
+                meshes[index]->draw(commandBuffer, currentFrame, pipelineLayout,
+                                    [&](uint32_t subIndex)
+                                    {
+                                        updateUniformBuffer(currentFrame);
+                                    });
+            }
+        }
+
+        // Ordina i trasparenti dal più lontano al più vicino
+        std::sort(transparentSorted.begin(), transparentSorted.end(),
+                  [](const auto &a, const auto &b)
+                  {
+                      return a.first > b.first;
+                  });
+
+        // Disegna i trasparenti ordinati
+        for (const auto &[_, index] : transparentSorted)
+        {
+            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, transparentPipeline);
+            meshes[index]->draw(commandBuffer, currentFrame, pipelineLayout,
+                                [&](uint32_t subIndex)
+                                {
+                                    updateUniformBuffer(currentFrame);
+                                });
         }
 
         // ora che abbiamo finito di disegnare, possiamo finalmente terminare il render pass
@@ -1452,13 +1547,13 @@ private:
             int meshIndex = 0;
             // for (size_t meshIndex = 0; meshIndex < meshToRender.size(); meshIndex++)
             // {
-                createBuffer(device, physicalDevice, bufferSize,
-                             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                             uniformBuffers[frame][meshIndex], uniformBuffersMemory[frame][meshIndex]);
+            createBuffer(device, physicalDevice, bufferSize,
+                         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                         uniformBuffers[frame][meshIndex], uniformBuffersMemory[frame][meshIndex]);
 
-                vkMapMemory(device, uniformBuffersMemory[frame][meshIndex], 0, bufferSize, 0,
-                            &uniformBuffersMapped[frame][meshIndex]);
+            vkMapMemory(device, uniformBuffersMemory[frame][meshIndex], 0, bufferSize, 0,
+                        &uniformBuffersMapped[frame][meshIndex]);
             // }
         }
     }
@@ -1467,10 +1562,9 @@ private:
     {
         // ora applico tutto al uniform buffer object
         struct UniformBufferObject ubo{};
-        glm::mat4 model = glm::scale(glm::mat4(), glm::vec3(0.5f, 0.5f, 0.5f));
-        ubo.sMatrices.model = model * transform;
-        ubo.sMatrices.view = glm::lookAt(camera.pos, camera.target, camera.up);                                                         // matrice di vista della camera
-        ubo.sMatrices.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f); // proiezione prospettica
+        ubo.sMatrices.model = transform;
+        ubo.sMatrices.view = glm::lookAt(camera.pos, camera.target, camera.up);                                                          // matrice di vista della camera
+        ubo.sMatrices.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 255.0f); // proiezione prospettica
         ubo.aLight.color = ambient_light.color();
         ubo.aLight.intensity = ambient_light.intensity();
         ubo.pointLight.color = point_light.color();
@@ -1482,6 +1576,52 @@ private:
         memcpy(uniformBuffersMapped[frame][meshIndex], &ubo, sizeof(ubo));
     }
 
+    // metodo per creare il depth buffer, essendo che vulkan non ha un depth buffer di default, dobbiamo crearne uno noi
+    void createDepthResources()
+    {
+        VkFormat depthFormat = findDepthFormat();
+        // l'immagine deve avere la stessa risoluzione della swap chain
+        createImage(device, physicalDevice,
+                    swapChainExtent.width, swapChainExtent.height,
+                    depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                    depthImage, depthImageMemory);
+        depthImageView = createImageView(device, depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+    }
+
+    // essendo che ci serve sapere se il formato selezionato ha anche uno stencil buffer, dobbiamo usare questa funzione
+    bool hasStencilComponent(VkFormat format)
+    {
+        return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
+    }
+    // questa funzione sfrutta findSupportedFormat per trovare un formato supportato per il depth buffer
+    VkFormat findDepthFormat()
+    {
+        return findSupportedFormat(
+            {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
+            VK_IMAGE_TILING_OPTIMAL,
+            VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+    }
+    // questa funzione ci permette di trovare un formato supportato che stiamo cercando
+    //  in questo caso lo useremo in un'altra funzione per trovare il formato del depth buffer
+    VkFormat findSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
+    {
+        for (VkFormat format : candidates)
+        {
+            VkFormatProperties props;
+            vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
+
+            if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
+            {
+                return format;
+            }
+            else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
+            {
+                return format;
+            }
+        }
+
+        throw std::runtime_error("failed to find supported format!");
+    }
     // questa funzione ci permette di creare un descriptor pool, che ci serve per allocare i descriptor set
     void createDescriptorPool()
     {
@@ -1563,7 +1703,7 @@ private:
                     imageInfos.push_back(texture->getDescriptorInfo());
                     // ora devo scorrere tutte le mesh per settare l'indice della texture
                     // tanto in caso non sia presente nella mesh, non succede nulla, viene solo ignorata
-                    for(auto mesh : meshes)
+                    for (auto mesh : meshes)
                     {
                         mesh->setTextureIndex(name, i);
                     }
@@ -1801,41 +1941,47 @@ private:
         //     octahdron[i].texCoord.y = 1.0f - octahdron[i].texCoord.y;
         // }
         // ora possiamo creare le mesh, composte dagli array di vertici che abbiamo creato prima
-        meshes.resize(5);
-        for (int i = 0; i < 11; i++)
+        meshes.resize(12);
+        for (int i = 0; i < 12; i++)
         {
             meshes[i] = new Mesh(device, physicalDevice, commandPool, graphicsQueue);
         }
-        //ora che abbiamo creato le mesh, carichiamo i file .obj
-        meshes[0]->loadFromFile("models/teapot.obj");
-        meshes[1]->loadFromFile("models/skull.obj");
-        meshes[2]->loadFromFile("models/dragon.obj");
-        //essendo che i primi 3 modelli non hanno una loro texture, gli imposto la texture bianca
-        for(int i = 0; i < 3; i++)
+        auto flags = aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_GenSmoothNormals | aiProcess_FlipUVs;
+        // ora che abbiamo creato le mesh, carichiamo i file .obj
+        meshes[0]->loadFromFile("models/teapot.obj", flags);
+        meshes[1]->loadFromFile("models/skull.obj", flags);
+        meshes[2]->loadFromFile("models/dragon.obj", flags);
+        // essendo che i primi 3 modelli non hanno una loro texture, gli imposto la texture bianca
+        for (int i = 0; i < 3; i++)
         {
             meshes[i]->addTexture("blank", -1);
         }
         // ora carico le texture dei modelli che hanno una loro texture
-        meshes[3]->loadFromFile("models/boot/boot.obj");
+        meshes[3]->loadFromFile("models/boot/boot.obj", flags);
         meshes[3]->addTexture("boot", -1);
-        meshes[4]->loadFromFile("models/flower/flower.obj");
+        meshes[4]->loadFromFile("models/flower/flower.obj", flags);
         meshes[4]->addTexture("flower", -1);
+
+        // ora carico tutte le parti di marius (non importa l'ordine delle singole, l'importante è che partano dal 5)
+        meshes[5]->loadFromFile("models/marius/head.obj", aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_GenSmoothNormals);
+        meshes[5]->addTexture("mariusHead", -1);
+        meshes[6]->loadFromFile("models/marius/eyelashesLower.obj", flags);
+        meshes[6]->addTexture("mariusLash", -1);
+        meshes[7]->loadFromFile("models/marius/eyelashesUpper.obj", flags);
+        meshes[7]->addTexture("mariusLash", -1);
+        meshes[8]->loadFromFile("models/marius/eyes.obj", flags);
+        meshes[8]->addTexture("mariusEye", -1);
+        meshes[9]->loadFromFile("models/marius/hair_plate.obj", flags);
+        meshes[9]->addTexture("mariusHPlate", -1);
+        meshes[10]->loadFromFile("models/marius/hair_vac.obj", flags);
+        meshes[10]->addTexture("mariusHVac", -1);
+        meshes[11]->loadFromFile("models/marius/eyebrows.obj", flags);
+        meshes[11]->addTexture("mariusLash", -1);
         std::cout << "modelli caricati" << std::endl;
-        //ora carico tutte le parti di marius (non importa l'ordine delle singole, l'importante è che partano dal 5)
-        // meshes[5]->loadFromFile("models/marius/eyebrows.obj");
-        // meshes[5]->addTexture("mariusLash", -1);
-        // meshes[6]->loadFromFile("models/marius/eyelashesLower.obj");
-        // meshes[6]->addTexture("mariusLash", -1);
-        // meshes[7]->loadFromFile("models/marius/eyelashesUpper.obj");
-        // meshes[7]->addTexture("mariusLash", -1);
-        // meshes[8]->loadFromFile("models/marius/eyes.obj");
-        // meshes[8]->addTexture("mariusEye", -1);
-        // meshes[9]->loadFromFile("models/marius/hair_plate.obj");
-        // meshes[9]->addTexture("mariusHPlate", -1);
-        // meshes[10]->loadFromFile("models/marius/hair_vac.obj");
-        // meshes[10]->addTexture("mariusHVac", -1);
-        // meshes[11]->loadFromFile("models/marius/head.obj");
-        // meshes[11]->addTexture("mariusHead", -1);
+        meshToRender.resize(1);
+        meshToRender.push_back(0);
+        meshCount = 1;
+        transform = glm::translate(glm::mat4(), glm::vec3(0.0f, -1.6f, -10.0f));
     }
 
     void initializeTextures()

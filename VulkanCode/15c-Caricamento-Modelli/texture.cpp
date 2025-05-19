@@ -38,7 +38,6 @@ void Texture::createTextureImage(const char *filename)
     stbi_uc *pixels = stbi_load(filename, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
     VkDeviceSize imageSize = texWidth * texHeight * 4;
 
-    std::cout << "Caricamento texture: " << filename << std::endl;
     if (!pixels)
     {
         throw std::runtime_error("failed to load texture image!");
@@ -65,7 +64,7 @@ void Texture::createTextureImage(const char *filename)
     Useremo VK_IMAGE_TILING_OPTIMAL per un accesso efficiente dallo shader.
     */
     createImage(device, physicalDevice,
-                texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM,
+                texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB,
                 VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                 textureImage, textureImageMemory);
@@ -90,7 +89,7 @@ void Texture::createTextureImage(const char *filename)
 
 void Texture::createTextureImageView()
 {
-    textureImageView = createImageView(device, textureImage, VK_FORMAT_R8G8B8A8_SRGB);
+    textureImageView = createImageView(device, textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
 }
 
 void Texture::createSampler()

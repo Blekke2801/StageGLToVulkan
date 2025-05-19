@@ -57,7 +57,7 @@ void main() {
 	vec4 material_color = texture(textures[push.textureIndex], fragTextCoord);
 
 	vec3 normal = normalize(fragNormal);
-	vec3 lightDir = normalize(fragPos-ubo.pointLight.position);
+	vec3 lightDir = normalize(ubo.pointLight.position - fragPos); 
 	float cosTheta = max(dot(normal, lightDir), 0.0);
 
 	vec3 view_dir    = normalize(ubo.cameraPos.xyz - fragPos);

@@ -10,12 +10,12 @@ ifeq ($(OS),Windows_NT)
 	INCLUDEDIRS += -I$(BASEDIR)/glfw/include
 	INCLUDEDIRS += -I$(BASEDIR)/glm
 	INCLUDEDIRS += -I$(BASEDIR)/stbImage
-	INCLUDEDIRS += -I$(BASEDIR)/assimp/include
+	INCLUDEDIRS += -I$(BASEDIR)/Assimp/include
 
 	LIBDIRS += -L$(BASEDIR)/glfw/lib-mingw-w64
 	LIBDIRS += -L$(BASEDIR)/VulkanSDK/Lib
 	LIBDIRS += -L$(BASEDIR)/stbImage
-	LIBDIRS += -L$(BASEDIR)/assimp/lib
+	LIBDIRS += -L$(BASEDIR)/Assimp/lib/x64
 
 	LIBS += -lvulkan-1
 	LIBS += -lglfw3dll
@@ -24,6 +24,7 @@ ifeq ($(OS),Windows_NT)
 else
 	LIBS += -lGLFW
 	LIBS += -lvulkan
+	LIBS += -lassimp
 endif
 
 OBJS = main.o bufferUtils.o texture.o mesh.o shaderclass.o light.o

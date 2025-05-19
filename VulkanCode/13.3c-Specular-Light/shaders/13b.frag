@@ -50,7 +50,7 @@ layout(binding = 0) uniform UniformBufferObject{
 void main() {
 	// Normalizziamo il vettore delle normali
 	vec3 normal = normalize(fragNormal);
-	vec3 lightDir = normalize(-ubo.directionalLight.direction);
+	vec3 lightDir = normalize(ubo.pointLight.position - fragPos); 
 	float cosTheta = max(dot(normal, lightDir), 0.0);
 
 	vec3 view_dir    = normalize(ubo.cameraPosition.xyz - fragPos);
