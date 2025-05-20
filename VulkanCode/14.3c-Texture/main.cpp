@@ -436,8 +436,19 @@ private:
     {
         cleanupSwapChain();
 
-        // vkDestroyBuffer(device, indexBuffer, nullptr);
-        // vkFreeMemory(device, indexBufferMemory, nullptr);
+        // distruggiamo le mesh
+        for (auto mesh : meshes)
+        {
+            delete mesh;
+        }
+        meshes.clear();
+
+        // distruggiamo le texture
+        for (auto &[name, tex] : textures)
+        {
+            delete tex;
+        }
+        textures.clear();
 
         vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 
@@ -451,8 +462,6 @@ private:
                 vkFreeMemory(device, uniformBuffersMemory[i][j], nullptr);
             }
         }
-
-        vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
         vkDestroyCommandPool(device, commandPool, nullptr);
 

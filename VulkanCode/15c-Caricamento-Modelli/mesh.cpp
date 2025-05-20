@@ -29,8 +29,8 @@ Mesh::~Mesh()
     vkDestroyBuffer(device, vertexBuffer, nullptr);    // distruggiamo il buffer dei vertici
     vkFreeMemory(device, vertexBufferMemory, nullptr); // distruggiamo la memoria del buffer dei vertici
 
-    // vkDestroyBuffer(device, indexBuffer, nullptr); // distruggiamo il buffer degli indici
-    // vkFreeMemory(device, indexBufferMemory, nullptr); // distruggiamo la memoria del buffer degli indici
+    vkDestroyBuffer(device, indexBuffer, nullptr); // distruggiamo il buffer degli indici
+    vkFreeMemory(device, indexBufferMemory, nullptr); // distruggiamo la memoria del buffer degli indici
 
     textures.clear(); // distruggiamo le texture
 }

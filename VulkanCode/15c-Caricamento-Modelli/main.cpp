@@ -128,6 +128,8 @@ PointLight point_light(glm::vec3(1, 1, 1), glm::vec3(0, 0, -1)); // colore e dir
 DiffusiveLight diffusive_light(0.7f); // intensità della luce diffusa
 
 SpecularLight specular_light(0.3f, 32.0f); // intensità e shininess della luce speculare
+
+bool wireframeMode = false; // modalità wireframe
 class InformaticaGraficaApplication
 {
 public:
@@ -161,8 +163,8 @@ private:
     VkDescriptorPool descriptorPool;                          // pool di descrittori Vulkan
     std::vector<std::vector<VkDescriptorSet>> descriptorSets; // set di descrittori Vulkan
     VkPipelineLayout pipelineLayout;                          // layout della pipeline Vulkan
-    VkPipeline opaquePipeline;                                // pipeline Vulkan per gli oggetti opachi
-    VkPipeline transparentPipeline;                           // pipeline Vulkan per gli oggetti trasparenti
+    std::vector<VkPipeline> noWirePipelines;                  // pipeline Vulkan per gli oggetti non wireframe
+    std::vector<VkPipeline> wirePipelines;                    // pipeline Vulkan per gli oggetti wireframe
 
     std::vector<VkFramebuffer> swapChainFramebuffers;              // framebuffer della swap chain Vulkan
     VkCommandPool commandPool;                                     // pool di comandi Vulkan
@@ -187,6 +189,7 @@ private:
     std::vector<Mesh *> meshes;                // vettore di puntatori a mesh
 
     uint32_t currentFrame = 0; // frame corrente
+
     void initWindow()
     {
         glfwInit();
@@ -255,6 +258,17 @@ private:
             case GLFW_KEY_F:
             case GLFW_KEY_M:
                 modelSwitcher(key);
+                break;
+            case GLFW_KEY_Z:
+                // cambia la modalità di rendering
+                if (wireframeMode)
+                {
+                    wireframeMode = false;
+                }
+                else
+                {
+                    wireframeMode = true;
+                }
                 break;
             default:
                 break;
@@ -500,8 +514,19 @@ private:
     {
         cleanupSwapChain();
 
-        // vkDestroyBuffer(device, indexBuffer, nullptr);
-        // vkFreeMemory(device, indexBufferMemory, nullptr);
+        // distruggiamo le mesh
+        for (auto mesh : meshes)
+        {
+            delete mesh;
+        }
+        meshes.clear();
+
+        // distruggiamo le texture
+        for (auto &[name, tex] : textures)
+        {
+            delete tex;
+        }
+        textures.clear();
 
         vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 
@@ -516,12 +541,15 @@ private:
             }
         }
 
-        vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
-
         vkDestroyCommandPool(device, commandPool, nullptr);
 
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
         vkDestroyRenderPass(device, renderPass, nullptr);
+
+        for (auto pipeline : noWirePipelines)
+            vkDestroyPipeline(device, pipeline, nullptr);
+        for (auto pipeline : wirePipelines)
+            vkDestroyPipeline(device, pipeline, nullptr);
 
         for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         {
@@ -1026,6 +1054,8 @@ private:
     // questa funzione ci permette di creare la pipeline grafica, che è un oggetto vulkan che rappresenta la pipeline di rendering
     void createGraphicsPipeline()
     {
+        noWirePipelines.resize(2);
+        wirePipelines.resize(2);
         ShaderClass shaderClass("shaders", device);
         if (!shaderClass.init())
         {
@@ -1202,18 +1232,32 @@ private:
         pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
         // creo la pipeline per gli oggetti opachi
-        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &opaquePipeline) != VK_SUCCESS)
+        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &noWirePipelines[0]) != VK_SUCCESS)
         {
             throw std::runtime_error("failed to create graphics pipeline!");
         }
-        // ora creiamo la pipeline per gli oggetti trasparenti
-        depthStencil.depthWriteEnable = VK_FALSE;   // disabilitiamo il depth write
-        colorBlendAttachment.blendEnable = VK_TRUE; // in modo da gestire texture trasparenti di marius
-        rasterizer.cullMode = VK_CULL_MODE_NONE;    // disabilitiamo il culling
-        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &transparentPipeline) != VK_SUCCESS)
+        // ora che abbiamo creato la pipeline per gli oggetti opachi senza wireframe, dobbiamo creare la pipeline per gli oggetti wireframe
+        rasterizer.polygonMode = VK_POLYGON_MODE_LINE; // ora creiamo la pipeline per gli oggetti wireframe
+        rasterizer.cullMode = VK_CULL_MODE_NONE;       // disabilitiamo il culling
+        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &wirePipelines[0]) != VK_SUCCESS)
         {
             throw std::runtime_error("failed to create graphics pipeline!");
         }
+        // ora creiamo la pipeline per gli oggetti trasparenti ora stessa cosa degli oggetti opachi, sia per wire che per non wire creiamo una pipeline
+        rasterizer.polygonMode = VK_POLYGON_MODE_FILL; // riabilitiamo per la prima pipeline e poi lo ridisabilitiamo per la seconda
+        depthStencil.depthWriteEnable = VK_FALSE;      // disabilitiamo il depth write
+        colorBlendAttachment.blendEnable = VK_TRUE;    // in modo da gestire texture trasparenti di marius
+        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &noWirePipelines[1]) != VK_SUCCESS)
+        {
+            throw std::runtime_error("failed to create graphics pipeline!");
+        }
+
+        rasterizer.polygonMode = VK_POLYGON_MODE_LINE; // ora creiamo la pipeline per gli oggetti wireframe
+        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &wirePipelines[1]) != VK_SUCCESS)
+        {
+            throw std::runtime_error("failed to create graphics pipeline!");
+        }
+
         // infine, come spiegato prima, distruggiamo gli shader module
         shaderClass.disable();
     }
@@ -1495,7 +1539,7 @@ private:
             else
             {
                 // Disegna subito gli opachi
-                vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, opaquePipeline);
+                vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, wireframeMode ? wirePipelines[0] : noWirePipelines[0]);
                 meshes[index]->draw(commandBuffer, currentFrame, pipelineLayout,
                                     [&](uint32_t subIndex)
                                     {
@@ -1514,7 +1558,7 @@ private:
         // Disegna i trasparenti ordinati
         for (const auto &[_, index] : transparentSorted)
         {
-            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, transparentPipeline);
+            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, wireframeMode ? wirePipelines[1] : noWirePipelines[1]);
             meshes[index]->draw(commandBuffer, currentFrame, pipelineLayout,
                                 [&](uint32_t subIndex)
                                 {
