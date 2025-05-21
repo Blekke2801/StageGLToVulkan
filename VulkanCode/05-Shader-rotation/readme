@@ -1,2 +1,1 @@
-prima di iniziare, se le shader contenute nella cartella "shader" non sono compilate, modificare "compile.bat" 
-sostituendo il percorso assoluto di glslc.exe con lo stesso, ma nella vostra macchina
+prima di iniziare se le vostre shader non sono compilate, eseguire il file "compile.bat" contenuto nella cartella "shaders"

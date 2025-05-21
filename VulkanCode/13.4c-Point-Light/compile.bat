@@ -1,5 +1,5 @@
 @echo off
-set GLSLC="C:\StageGLToVulkan\VulkanCode\base\VulkanSDK\Bin\glslc.exe"
+set GLSLC="%~dp0\..\base\VulkanSDK\Bin\glslc.exe"
 set SRC=shaders
 set DST=compiled
 

@@ -1,3 +1,0 @@
-Da questo progetto in poi, tutte le shader verranno gestite dalla classe shaderclass, essa gestisce tutto,
-dalla compilazione alla creazione e distruzione degli shader module, quando compilate, le shader compilate vengono inserite in una nuova cartella chiamata compiled
-il file compile.bat è stato modificato in modo da renderlo generico per tutti i restanti progetti e spostato nella cartella principale (fuori da shader)

@@ -249,14 +249,7 @@ private:
     static void cameraControls(int key)
     {
         // sta volta, le trasformazioni verranno applicate alla camera, quindi dovremo modificare la "view"
-        // per rendere il triangolo animato, dobbiamo aggiornare la matrice di trasformazione ogni frame
-        //   per farlo usiamo la funzione std::chrono::high_resolution_clock::now() che ci permette di ottenere il tempo attuale
-        //   e la funzione std::chrono::duration<float>(currentTime - previousTime).count() che ci permette di calcolare il delta time
-        //   così da rendere il triangolo animato in modo fluido e non a scatti
-        auto currentTime = std::chrono::high_resolution_clock::now();
 
-        float deltaTime = std::chrono::duration<float>(currentTime - previousTime).count();
-        previousTime = currentTime;
         float _speed = 0.05f;
         // calcola il vettore perpendicolare alla direzione della camera
         glm::vec3 direction = glm::normalize(camera.target - camera.pos);
@@ -265,23 +258,23 @@ private:
         {
         case GLFW_KEY_UP:
             // spostiamo la camera in avanti nella direzione in cui sta guardando
-            camera.pos -= direction * _speed * deltaTime;
-            camera.target -= direction * _speed * deltaTime;
+            camera.pos += direction * _speed;
+            camera.target += direction * _speed;
             break;
         case GLFW_KEY_DOWN:
             // spostiamo la camera indietro nella direzione opposta a quella in cui sta guardando
-            camera.pos += direction * _speed * deltaTime;
-            camera.target += direction * _speed * deltaTime;
+            camera.pos -= direction * _speed;
+            camera.target -= direction * _speed;
             break;
         case GLFW_KEY_LEFT:
             // spostiamo la camera a sinistra nella direzione perpendicolare alla direzione in cui sta guardando
-            camera.pos -= right * _speed * deltaTime;
-            camera.target -= right * _speed * deltaTime;
+            camera.pos -= right * _speed;
+            camera.target -= right * _speed;
             break;
         case GLFW_KEY_RIGHT:
             // spostiamo la camera a destra nella direzione opposta a quella in cui sta guardando
-            camera.pos += right * _speed * deltaTime;
-            camera.target += right * _speed * deltaTime;
+            camera.pos += right * _speed;
+            camera.target += right * _speed;
             break;
         }
     }

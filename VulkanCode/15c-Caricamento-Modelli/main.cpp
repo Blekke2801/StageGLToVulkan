@@ -466,7 +466,7 @@ private:
         case GLFW_KEY_M:
             // carichiamo il modello del marius
             cameraControls(GLFW_KEY_SPACE);
-            baseTransform = glm::translate(glm::mat4(), glm::vec3(0.0f, -1.7f, 3.0f)) *
+            baseTransform = glm::translate(glm::mat4(), glm::vec3(0.0f, -1.7f, 1.0f)) *
                             glm::rotate(glm::mat4(), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
             meshToRender = {5, 6, 7, 8, 9, 10, 11};
             meshCount = 7;
