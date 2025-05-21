@@ -358,11 +358,11 @@ private:
             break;
         case GLFW_KEY_SPACE:
             // reset della camera
-            camera.pos = glm::vec3(0.0f, 0.0f, 4.0f);
+            camera.pos = glm::vec3(0.0f, 0.0f, 2.0f);
             camera.target = glm::vec3(0.0f, 0.0f, 0.0f);
             camera.up = glm::vec3(0.0f, 1.0f, 0.0f);
-            camera.yaw = 0.0f;
-            camera.pitch = -90.0f;
+            camera.yaw = -90.0f;
+            camera.pitch = 0.0f;
             break;
         }
     }

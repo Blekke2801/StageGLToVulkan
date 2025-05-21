@@ -337,6 +337,14 @@ private:
             camera.pos += right * _speed * deltaTime;
             camera.target += right * _speed * deltaTime;
             break;
+        case GLFW_KEY_SPACE:
+            // reset della camera
+            camera.pos = glm::vec3(0.0f, 0.0f, 2.0f);
+            camera.target = glm::vec3(0.0f, 0.0f, 0.0f);
+            camera.up = glm::vec3(0.0f, 1.0f, 0.0f);
+            camera.yaw = -90.0f;
+            camera.pitch = 0.0f;
+            break;
         }
     }
 

@@ -10,7 +10,6 @@ void main()
 {
 	// Negli shader si usano le coordinate omogenee
 	// In output mandiamo un punto in coordinate omogenee che ha
-	// le coordinate x e y del punto di input scalate di un fattore 0.8. 
 	// gl_Position è una variabile predefinita
 	gl_Position = vec4(positions[gl_VertexIndex], 0.0, 1.0);
 }
