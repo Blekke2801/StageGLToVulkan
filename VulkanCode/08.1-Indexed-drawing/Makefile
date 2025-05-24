@@ -23,7 +23,7 @@ endif
 
 OBJS = main.o
 
-triangolo.exe : $(OBJS)
+indexed-drawing.exe : $(OBJS)
 	$(CC) $(CCFLAGS) $^ $(LIBDIRS) $(LIBS) -o $@
 
 main.o : main.cpp
