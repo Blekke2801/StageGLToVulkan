@@ -322,7 +322,7 @@ private:
     static void cameraControls(int key)
     {
         // sta volta, le trasformazioni verranno applicate alla camera, quindi dovremo modificare la "view"
-         
+
         float _speed = 0.05f;
         // calcola il vettore perpendicolare alla direzione della camera
         glm::vec3 direction = glm::normalize(camera.target - camera.pos);
@@ -331,23 +331,23 @@ private:
         {
         case GLFW_KEY_UP:
             // spostiamo la camera in avanti nella direzione in cui sta guardando
-            camera.pos += direction * _speed ;
-            camera.target += direction * _speed ;
+            camera.pos += direction * _speed;
+            camera.target += direction * _speed;
             break;
         case GLFW_KEY_DOWN:
             // spostiamo la camera indietro nella direzione opposta a quella in cui sta guardando
-            camera.pos -= direction * _speed ;
-            camera.target -= direction * _speed ;
+            camera.pos -= direction * _speed;
+            camera.target -= direction * _speed;
             break;
         case GLFW_KEY_LEFT:
             // spostiamo la camera a sinistra nella direzione perpendicolare alla direzione in cui sta guardando
-            camera.pos -= right * _speed ;
-            camera.target -= right * _speed ;
+            camera.pos -= right * _speed;
+            camera.target -= right * _speed;
             break;
         case GLFW_KEY_RIGHT:
             // spostiamo la camera a destra nella direzione opposta a quella in cui sta guardando
-            camera.pos += right * _speed ;
-            camera.target += right * _speed ;
+            camera.pos += right * _speed;
+            camera.target += right * _speed;
             break;
         case GLFW_KEY_SPACE:
             // reset della camera
@@ -369,19 +369,19 @@ private:
         {
         case GLFW_KEY_W:
             // ruotiamo il cubo in avanti
-            cubeTransform = glm::rotate(cubeTransform, -glm::radians(_speed), glm::vec3(1.0f, 0.0f, 0.0f));
+            cubeTransform = glm::rotate(glm::mat4(), -glm::radians(_speed), glm::vec3(1.0f, 0.0f, 0.0f)) * cubeTransform;
             break;
         case GLFW_KEY_A:
             // ruotiamo il cubo a sinistra
-            cubeTransform = glm::rotate(cubeTransform, -glm::radians(_speed), glm::vec3(0.0f, 1.0f, 0.0f));
+            cubeTransform = glm::rotate(glm::mat4(), -glm::radians(_speed), glm::vec3(0.0f, 1.0f, 0.0f)) * cubeTransform;
             break;
         case GLFW_KEY_S:
             // ruotiamo il cubo indietro
-            cubeTransform = glm::rotate(cubeTransform, glm::radians(_speed), glm::vec3(1.0f, 0.0f, 0.0f));
+            cubeTransform = glm::rotate(glm::mat4(), glm::radians(_speed), glm::vec3(1.0f, 0.0f, 0.0f)) * cubeTransform;
             break;
         case GLFW_KEY_D:
             // ruotiamo il cubo a destra
-            cubeTransform = glm::rotate(cubeTransform, glm::radians(_speed), glm::vec3(0.0f, 1.0f, 0.0f));
+            cubeTransform = glm::rotate(glm::mat4(), glm::radians(_speed), glm::vec3(0.0f, 1.0f, 0.0f)) * cubeTransform;
             break;
         }
     }

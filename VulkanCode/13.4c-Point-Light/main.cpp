@@ -416,25 +416,25 @@ private:
 
     static void cubeControls(int key)
     {
-        float _speed = 1.0f;
+        float _speed = 10.0f;
 
         switch (key)
         {
         case GLFW_KEY_W:
             // ruotiamo il cubo in avanti
-            cubeTransform = glm::rotate(cubeTransform, -glm::radians(_speed), glm::vec3(1.0f, 0.0f, 0.0f));
+            cubeTransform = glm::rotate(glm::mat4(), -glm::radians(_speed), glm::vec3(1.0f, 0.0f, 0.0f)) * cubeTransform;
             break;
         case GLFW_KEY_A:
             // ruotiamo il cubo a sinistra
-            cubeTransform = glm::rotate(cubeTransform, -glm::radians(_speed), glm::vec3(0.0f, 1.0f, 0.0f));
+            cubeTransform = glm::rotate(glm::mat4(), -glm::radians(_speed), glm::vec3(0.0f, 1.0f, 0.0f)) * cubeTransform;
             break;
         case GLFW_KEY_S:
             // ruotiamo il cubo indietro
-            cubeTransform = glm::rotate(cubeTransform, glm::radians(_speed), glm::vec3(1.0f, 0.0f, 0.0f));
+            cubeTransform = glm::rotate(glm::mat4(), glm::radians(_speed), glm::vec3(1.0f, 0.0f, 0.0f)) * cubeTransform;
             break;
         case GLFW_KEY_D:
             // ruotiamo il cubo a destra
-            cubeTransform = glm::rotate(cubeTransform, glm::radians(_speed), glm::vec3(0.0f, 1.0f, 0.0f));
+            cubeTransform = glm::rotate(glm::mat4(), glm::radians(_speed), glm::vec3(0.0f, 1.0f, 0.0f)) * cubeTransform;
             break;
         }
     }

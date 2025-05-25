@@ -333,19 +333,19 @@ private:
         {
         case GLFW_KEY_W:
             // ruotiamo il cubo in avanti
-            transform = glm::rotate(transform, glm::radians(_speed), glm::vec3(1.0f, 0.0f, 0.0f));
+            transform = glm::rotate(glm::mat4(), -glm::radians(_speed), glm::vec3(1.0f, 0.0f, 0.0f)) * transform;
             break;
         case GLFW_KEY_A:
             // ruotiamo il cubo a sinistra
-            transform = glm::rotate(transform, glm::radians(_speed), glm::vec3(0.0f, 1.0f, 0.0f));
+            transform = glm::rotate(glm::mat4(), -glm::radians(_speed), glm::vec3(0.0f, 1.0f, 0.0f)) * transform;
             break;
         case GLFW_KEY_S:
             // ruotiamo il cubo indietro
-            transform = glm::rotate(transform, -glm::radians(_speed), glm::vec3(1.0f, 0.0f, 0.0f));
+            transform = glm::rotate(glm::mat4(), glm::radians(_speed), glm::vec3(1.0f, 0.0f, 0.0f)) * transform;
             break;
         case GLFW_KEY_D:
             // ruotiamo il cubo a destra
-            transform = glm::rotate(transform, -glm::radians(_speed), glm::vec3(0.0f, 1.0f, 0.0f));
+            transform = glm::rotate(glm::mat4(), glm::radians(_speed), glm::vec3(0.0f, 1.0f, 0.0f)) * transform;
             break;
         }
     }
