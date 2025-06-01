@@ -125,6 +125,18 @@ private:
 
         // creiamo la finestra di dimensioni WIDTH e HEIGHT con il titolo "Vulkan" (gli ultimi 2 parametri li ignoriamo che non ci interessano)
         window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
+
+        // dobbiamo specificare che vogliamo usare dei tasti della tastiera per gestire gli input
+        glfwSetKeyCallback(window, key_callback);
+    }
+
+    static void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods)
+    {
+        if (action == GLFW_PRESS && key == GLFW_KEY_ESCAPE)
+        {
+            std::cout << "Escape pressed" << std::endl;
+            glfwSetWindowShouldClose(window, true);
+        }
     }
 
     void initVulkan()
