@@ -978,27 +978,6 @@ private:
         }
     }
 
-    // questa funzione ci permette di creare un shader module, che è un oggetto vulkan che rappresenta uno shader compilato
-    VkShaderModule createShaderModule(const std::vector<char> &code)
-    {
-        // come al solito creiamo uno struct per specificare i parametri che ci servono, in questo caso per lo shader module
-        VkShaderModuleCreateInfo createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-        createInfo.codeSize = code.size();
-        // la dimensione del codice è in byte, quindi dobbiamo convertirla in uint32_t perché il puntatore è un uint32_t,
-        // per questo tipo di cast, dobbiamo assicurarci che la dimensione del codice sia un multiplo di 4, altrimenti il cast non funzionerà, per fortuna è un vector, quindi non abbiamo problemi
-        createInfo.pCode = reinterpret_cast<const uint32_t *>(code.data());
-
-        // ora che abbiamo settato tutti i parametri, possiamo finalmente creare lo shader module
-        VkShaderModule shaderModule;
-        if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
-        {
-            throw std::runtime_error("failed to create shader module!");
-        }
-
-        return shaderModule;
-    }
-
     // questa funzione ci permette di creare la pipeline grafica, che è un oggetto vulkan che rappresenta la pipeline di rendering
     void createGraphicsPipeline()
     {

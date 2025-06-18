@@ -230,7 +230,6 @@ private:
 
         // dobbiamo specificare che vogliamo usare dei tasti della tastiera per gestire gli input
         glfwSetKeyCallback(window, key_callback);
-        glfwSetCursorPosCallback(window, mouse_callback);
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         int width, height;
         glfwGetFramebufferSize(window, &width, &height);

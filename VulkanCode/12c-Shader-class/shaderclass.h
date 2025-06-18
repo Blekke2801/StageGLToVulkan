@@ -69,7 +69,6 @@ protected:
 
 private:
     VkDevice device;                              // Handle del dispositivo Vulkan
-    std::string sdkPath;                          // Percorso dell'SDK Vulkan
     std::string shaderDir;                        // Directory contenente i file sorgente degli shader
     std::vector<Shader> shaders;                  // Lista degli shader con i loro tipi e percorsi compilati
     VkShaderModule fragShaderModule;              // Modulo shader fragment

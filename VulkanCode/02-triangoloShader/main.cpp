@@ -915,7 +915,7 @@ private:
     // vulkan non ha funzioni specifiche per le sue operazioni, tipo quelle di disegno o di memoria
     // esso utilizza dei buffer di comandi pieni di istruzioni che vengono eseguite dalla GPU
     // questo è vantaggioso perché permette di eseguire più operazioni in parallelo e di ottimizzare le prestazioni
-    // quindi la funzione seguente ci permette di creare pull di comandi
+    // quindi la funzione seguente ci permette di creare pool di comandi
     void createCommandPool()
     {
         // per creare la command pool ci servono 2 parametri: la famiglia di code e le proprietà della command pool

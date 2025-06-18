@@ -31,7 +31,7 @@ static std::vector<char> readFile(const std::string &filename)
     return buffer;
 }
 
-ShaderClass::ShaderClass(const std::string &shaderDir, const VkDevice &device) : sdkPath("C:/StageGLToVulkan/VulkanCode/base/VulkanSDK/Bin/glslc.exe"), shaderDir(shaderDir), device(device)
+ShaderClass::ShaderClass(const std::string &shaderDir, const VkDevice &device) : shaderDir(shaderDir), device(device)
 {
     // Inizializza i moduli shader
     fragShaderModule = VK_NULL_HANDLE;
