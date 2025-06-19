@@ -37,10 +37,23 @@ const uint32_t HEIGHT = 768;
 
 const uint32_t MAX_FRAMES_IN_FLIGHT = 2; // numero di frame in volo
 
+/**
+ * @brief Struttura per l'oggetto del buffer uniforme.
+ *
+ * Questo struct contiene tutti i dati che devono essere passati alla shader.
+ * Ogni elemento della struttura deve essere allineato a 16 byte per garantire che Vulkan possa accedervi correttamente.
+ */
 struct UniformBufferObject
 {
     glm::mat4 transform;
 };
+
+/**
+ * @brief Struttura per i vertici del modello.
+ *
+ * Questa struttura contiene tutte le informazioni necessarie da elaborare all'interno della vertex shader.
+ * Essa include anche metodi statici dedicati all'ottenere descrizioni di collegamento e descrizione sugli attributi dello stesso.
+ */
 struct Vertex
 {
     glm::vec3 pos;
@@ -80,6 +93,12 @@ const std::vector<Vertex> vertices = {
     {{-1.0f, -1.0f, 0.0f}},
     {{1.0f, -1.0f, 0.0f}},
     {{0.0f, 1.0f, 0.0f}}};
+
+/**
+ * @brief Struttura per gli indici delle famiglie di code.
+ *
+ * Questa struttura contiene gli indici delle famiglie di code necessarie per il rendering e la presentazione.
+ */
 struct QueueFamilyIndices
 {
     std::optional<uint32_t> graphicsFamily;
@@ -90,6 +109,12 @@ struct QueueFamilyIndices
         return graphicsFamily.has_value() && presentFamily.has_value();
     }
 };
+
+/**
+ * @brief Struttura per i dettagli del supporto della swap chain.
+ *
+ * Questa struttura contiene le informazioni necessarie per creare una swap chain.
+ */
 struct SwapChainSupportDetails
 {
     VkSurfaceCapabilitiesKHR capabilities;
@@ -337,7 +362,17 @@ private:
         glfwTerminate();
     }
 
-    // funzione per creare buffer e allocare memoria per il buffer
+    /**
+     * @brief Crea un buffer e alloca memoria per esso.
+     *
+     * Questo metodo crea un buffer a seconda delle specifiche fornite e alloca la memoria necessaria.
+     *
+     * @param size La dimensione del buffer da creare.
+     * @param usage Le flag di utilizzo del buffer
+     * @param properties Le proprietà della memoria del buffer.
+     * @param buffer Il buffer creato.
+     * @param bufferMemory La memoria allocata per il buffer.
+     */
     void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer &buffer, VkDeviceMemory &bufferMemory)
     {
         VkBufferCreateInfo bufferInfo{};
@@ -1442,7 +1477,10 @@ private:
         }
     }
 
-    // questa funzione ci permette di creare il vertex Buffer
+
+    /**
+     * @brief Crea il buffer dei vertici e la memoria associata.
+     */
     void createVertexBuffer()
     {
         VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size(); // la dimensione del buffer è la somma della dimensione di tutti i vertici
@@ -1473,8 +1511,7 @@ private:
         vkFreeMemory(device, stagingBufferMemory, nullptr); // distruggiamo la memoria del buffer di staging
     }
 
-    
-/**
+    /**
      * @brief metodo per creare i buffer uniformi
      *
      * Questo metodo crea i buffer uniformi, che verranno utilizzati per passare i dati alle shader.
@@ -1497,8 +1534,7 @@ private:
         }
     }
 
-    
-/**
+    /**
      * @brief metodo per aggiornare i buffer uniformi
      *
      * Questo metodo aggiorna i buffer uniformi con i dati correnti.
@@ -1533,8 +1569,7 @@ private:
         memcpy(uniformBuffersMapped[frame], &ubo, sizeof(ubo)); // copiamo i dati nel buffer
     }
 
-    
-/**
+    /**
      * @brief metodo per creare il descriptor pool
      *
      * Questo metodo crea il descriptor pool, oggetto che prende in gestione i descriptor set.
@@ -1559,8 +1594,7 @@ private:
         }
     }
 
-    
-/**
+    /**
      * @brief metodo per creare i descriptor set
      *
      * Questo metodo crea i descriptor set, oggetti che rappresentano le risorse da utilizzare nella pipeline grafica.
@@ -1607,7 +1641,15 @@ private:
         }
     }
 
-    // questa funzione verrà utilizzata per copiare i dati da un buffer ad un altro
+    /**
+     * @brief Copia i dati da un buffer ad un altro.
+     *
+     * Questo metodo copia i dati da un buffer di origine a un buffer di destinazione.
+     *
+     * @param srcBuffer Il buffer di origine da cui copiare i dati.
+     * @param dstBuffer Il buffer di destinazione in cui copiare i dati.
+     * @param size La dimensione dei dati da copiare.
+     */
     void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
     {
         // le operazioni di copia vengono eseguite in un command buffer, quindi dobbiamo crearne uno temporaneo
@@ -1647,6 +1689,15 @@ private:
         vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer); // libero il command buffer temporaneo
     }
 
+    /**
+     * @brief Trova il tipo di memoria adatto per un buffer.
+     *
+     * Questo metodo cerca il tipo di memoria più adatto per un buffer in base alle specifiche fornite.
+     * @param physicalDevice Il dispositivo fisico Vulkan.
+     * @param typeFilter I filtri di tipo di memoria.
+     * @param properties Le proprietà della memoria desiderate.
+     * @return Il tipo di memoria trovato.
+     */
     uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
     {
         VkPhysicalDeviceMemoryProperties memProperties;
@@ -1663,8 +1714,7 @@ private:
         throw std::runtime_error("failed to find suitable memory type!");
     }
 
-    
-/**
+    /**
      * @brief metodo per disegnare un frame
      *
      * Questo metodo gestisce il processo di disegno di un frame, inclusa l'acquisizione dell'immagine dalla swap chain e la registrazione dei comandi di disegno.
@@ -1778,8 +1828,7 @@ private:
         currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     }
 
-    
-/**
+    /**
      * @brief metodo per creare gli oggetti utili alla sincronizzazione delle operazioni all'interno del sistema
      *
      * Questo metodo crea i semafori e le fence necessari per la sincronizzazione tra la CPU e la GPU.

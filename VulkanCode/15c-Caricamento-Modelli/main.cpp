@@ -46,9 +46,13 @@ const uint32_t HEIGHT = 768;
 const uint32_t MAX_FRAMES_IN_FLIGHT = 2; // numero di frame in volo
 const uint32_t MAX_TEXTURES = 16;        // numero massimo di texture
 auto previousTime = std::chrono::high_resolution_clock::now();
-// essendo che ora abbiamo anche la luce, dobbiamo aggiungere i suoi parametri al uniform buffer object
-// ogni strutture deve essere allineata a 16 byte, quindi dobbiamo usare alignas(16) per le strutture e usare anche dei padding
-// per allineare i dati
+
+/**
+ * @brief Struttura per l'oggetto del buffer uniforme.
+ *
+ * Questo struct contiene tutti i dati che devono essere passati alla shader.
+ * Ogni elemento della struttura deve essere allineato a 16 byte per garantire che Vulkan possa accedervi correttamente.
+ */
 struct UniformBufferObject
 {
     struct alignas(16) SceneMatrices // struttura per le matrici di scena
@@ -82,7 +86,12 @@ struct UniformBufferObject
     } specLight;
     glm::vec4 cameraPos; // posizione della camera
 };
-// ho creato una mia struttura per la camera
+
+/**
+ * @brief Struttura dedicata alla camera all'interno dello spazio 3D.
+ *
+ * Questa struttura contiene le informazioni necessarie per calcolare la matrice di vista della camera.
+ */
 struct MyCamera
 {
     glm::vec3 pos;
@@ -97,6 +106,12 @@ glm::mat4 userTransform = glm::mat4(1.0f); // matrice di trasformazione del cubo
 
 std::vector<uint32_t> meshToRender = {}; // vettore di indici delle mesh da renderizzare
 uint32_t meshCount = 0;                  // numero di mesh
+
+/**
+ * @brief Struttura per gli indici delle famiglie di code.
+ *
+ * Questa struttura contiene gli indici delle famiglie di code necessarie per il rendering e la presentazione.
+ */
 struct QueueFamilyIndices
 {
     std::optional<uint32_t> graphicsFamily;
@@ -107,6 +122,12 @@ struct QueueFamilyIndices
         return graphicsFamily.has_value() && presentFamily.has_value();
     }
 };
+
+/**
+ * @brief Struttura per i dettagli del supporto della swap chain.
+ *
+ * Questa struttura contiene le informazioni necessarie per creare una swap chain.
+ */
 struct SwapChainSupportDetails
 {
     VkSurfaceCapabilitiesKHR capabilities;

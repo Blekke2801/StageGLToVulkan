@@ -22,49 +22,101 @@
 #include <fstream>
 
 namespace fs = std::filesystem;
+
+/**
+ * @brief Struttura per rappresentare uno shader.
+ */
 struct Shader
 {
     std::string type; // "vertex" or "fragment"
     std::string compiledPath;
 };
 
+/**
+ * @brief Legge il contenuto di un file in un vettore di caratteri.
+ *
+ * @param filename Il percorso del file da leggere.
+ * @return Un vettore di caratteri contenente il contenuto del file.
+ * @throws std::runtime_error Se si verifica un errore durante la lettura del file
+ */
 static std::vector<char> readFile(const std::string &filename);
 
 class ShaderClass
 {
 public:
-    // Costruttore: Inizializza la classe ShaderClass con la directory degli shader e il dispositivo Vulkan.
+    /**
+     * @brief Costruttore della classe ShaderClass.
+     *
+     * Inizializza la classe con la directory degli shader e il dispositivo Vulkan.
+     * @param shaderDir La directory contenente i file sorgente degli shader.
+     * @param device Il dispositivo Vulkan su cui operare.
+     * @note Questo costruttore non compila gli shader, ma prepara la classe per l'inizializzazione.
+     * @throws std::runtime_error Se si verifica un errore durante la creazione del
+     */
     ShaderClass(const std::string &shaderDir, const VkDevice &device);
 
-    // Distruttore: Libera le risorse utilizzate dalla classe ShaderClass.
+    /**
+     * @brief Distruttore della classe ShaderClass.
+     *
+     * Rilascia le risorse Vulkan allocate per gli shader.
+     */
     ~ShaderClass();
 
-    // Inizializza i moduli shader e compila gli shader se necessario.
+    /**
+     * @brief Inizializza i moduli shader e compila gli shader se necessario.
+     * @return bool il risultato dell'inizializzazione.
+     * @returns true se l'inizializzazione è riuscita, false altrimenti.
+     */
     bool init();
 
-    // Abilita i moduli shader e crea i moduli shader Vulkan.
+    /**
+     * @brief Abilita i moduli shader e crea i moduli shader Vulkan.
+     */
     void enable();
 
-    // Disabilita i moduli shader e rilascia le risorse Vulkan.
+    /**
+     * @brief Disabilita i moduli shader e rilascia le risorse Vulkan.
+     */
     void disable();
 
-    // Restituisce il modulo shader Vulkan per lo shader vertex.
+    /**
+     * @brief Restituisce il modulo shader Vulkan per lo shader vertex.
+     * @return Il modulo shader Vulkan per lo shader vertex.
+     */
     VkShaderModule getVertShaderModule() const;
 
-    // Restituisce il modulo shader Vulkan per lo shader fragment.
+    /**
+     * @brief Restituisce il modulo shader Vulkan per lo shader fragment.
+     * @return Il modulo shader Vulkan per lo shader fragment.
+     */
     VkShaderModule getFragShaderModule() const;
 
     // aggiorna e restituisce lo struct da mappare successivamente nel buffer uniforme
     // void updateUniformBuffer(const std::vector<void *> uniformBufferMapped, const uint32_t frame);
 
 protected:
-    // Verifica se il file sorgente dello shader necessita di ricompilazione in base ai timestamp.
+    /**
+     * @brief Verifica se il file sorgente dello shader necessita di ricompilazione in base ai timestamp.
+     * @param srcPath Il percorso del file sorgente dello shader.
+     * @param spvPath Il percorso del file SPIR-V compilato.
+     * @return true se è necessaria la ricompilazione, false altrimenti.
+     * @throws std::runtime_error Se si verifica un errore durante la verifica dei file
+     */
     bool needsRecompile(const std::string &srcPath, const std::string &spvPath);
 
-    // Compila tutti gli shader nella directory se è necessaria la ricompilazione.
+    /**
+     * @brief Compila tutti gli shader nella directory se è necessaria la ricompilazione.
+     * @return true se la compilazione è riuscita, false altrimenti.
+     * @throws std::runtime_error Se si verifica un errore durante la compilazione degli
+     */
     bool compileAllIfNeeded();
 
-    // Crea un modulo shader Vulkan dal bytecode SPIR-V fornito.
+    /**
+     * @brief Crea un modulo shader Vulkan dal bytecode SPIR-V fornito.
+     * @param code Il bytecode SPIR-V da utilizzare per creare il modulo shader.
+     * @return Il modulo shader Vulkan creato.
+     * @throws std::runtime_error Se si verifica un errore durante la creazione del modulo shader.
+     */
     VkShaderModule createShaderModule(const std::vector<char> &code);
 
 private:

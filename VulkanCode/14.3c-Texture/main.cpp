@@ -45,9 +45,13 @@ const uint32_t HEIGHT = 768;
 const uint32_t MAX_FRAMES_IN_FLIGHT = 2; // numero di frame in volo
 const uint32_t MAX_TEXTURES = 8;         // numero massimo di texture
 auto previousTime = std::chrono::high_resolution_clock::now();
-// essendo che ora abbiamo anche la luce, dobbiamo aggiungere i suoi parametri al uniform buffer object
-// ogni strutture deve essere allineata a 16 byte, quindi dobbiamo usare alignas(16) per le strutture e usare anche dei padding
-// per allineare i dati
+
+/**
+ * @brief Struttura per l'oggetto del buffer uniforme.
+ *
+ * Questo struct contiene tutti i dati che devono essere passati alla shader.
+ * Ogni elemento della struttura deve essere allineato a 16 byte per garantire che Vulkan possa accedervi correttamente.
+ */
 struct UniformBufferObject
 {
     struct alignas(16) SceneMatrices // struttura per le matrici di scena
@@ -81,7 +85,12 @@ struct UniformBufferObject
     } specLight;
     glm::vec4 cameraPos; // posizione della camera
 };
-// ho creato una mia struttura per la camera
+
+/**
+ * @brief Struttura dedicata alla camera all'interno dello spazio 3D.
+ *
+ * Questa struttura contiene le informazioni necessarie per calcolare la matrice di vista della camera.
+ */
 struct MyCamera
 {
     glm::vec3 pos;
@@ -93,6 +102,11 @@ struct MyCamera
 
 glm::mat4 transform = glm::mat4(1.0f); // matrice di trasformazione del cubo
 
+/**
+ * @brief Struttura per gli indici delle famiglie di code.
+ *
+ * Questa struttura contiene gli indici delle famiglie di code necessarie per il rendering e la presentazione.
+ */
 struct QueueFamilyIndices
 {
     std::optional<uint32_t> graphicsFamily;
@@ -103,6 +117,12 @@ struct QueueFamilyIndices
         return graphicsFamily.has_value() && presentFamily.has_value();
     }
 };
+
+/**
+ * @brief Struttura per i dettagli del supporto della swap chain.
+ *
+ * Questa struttura contiene le informazioni necessarie per creare una swap chain.
+ */
 struct SwapChainSupportDetails
 {
     VkSurfaceCapabilitiesKHR capabilities;
@@ -182,7 +202,7 @@ private:
     std::vector<Mesh *> meshes;                // vettore di puntatori a mesh
 
     uint32_t currentFrame = 0; // frame corrente
-    
+
     /**
      * @brief metodo di inizializzazione della finestra GLFW.
      *
@@ -311,7 +331,6 @@ private:
         camera.target = camera.pos + glm::normalize(direction);
     }
 
-    
     /**
      * @brief metodo per gestire i controlli della camera
      * @param key il tasto premuto
@@ -320,7 +339,7 @@ private:
     static void cameraControls(int key)
     {
         // sta volta, le trasformazioni verranno applicate alla camera, quindi dovremo modificare la "view"
-         
+
         float _speed = 0.05f;
         // calcola il vettore perpendicolare alla direzione della camera
         glm::vec3 direction = glm::normalize(camera.target - camera.pos);
@@ -329,23 +348,23 @@ private:
         {
         case GLFW_KEY_UP:
             // spostiamo la camera in avanti nella direzione in cui sta guardando
-            camera.pos += direction * _speed ;
-            camera.target += direction * _speed ;
+            camera.pos += direction * _speed;
+            camera.target += direction * _speed;
             break;
         case GLFW_KEY_DOWN:
             // spostiamo la camera indietro nella direzione opposta a quella in cui sta guardando
-            camera.pos -= direction * _speed ;
-            camera.target -= direction * _speed ;
+            camera.pos -= direction * _speed;
+            camera.target -= direction * _speed;
             break;
         case GLFW_KEY_LEFT:
             // spostiamo la camera a sinistra nella direzione perpendicolare alla direzione in cui sta guardando
-            camera.pos -= right * _speed ;
-            camera.target -= right * _speed ;
+            camera.pos -= right * _speed;
+            camera.target -= right * _speed;
             break;
         case GLFW_KEY_RIGHT:
             // spostiamo la camera a destra nella direzione opposta a quella in cui sta guardando
-            camera.pos += right * _speed ;
-            camera.target += right * _speed ;
+            camera.pos += right * _speed;
+            camera.target += right * _speed;
             break;
         case GLFW_KEY_SPACE:
             // reset della camera
@@ -359,7 +378,6 @@ private:
         }
     }
 
-    
     /**
      * @brief metodo per gestire i controlli di rotazione del modello
      * @param key il tasto premuto
@@ -461,12 +479,11 @@ private:
         createSyncObjects();
     }
 
-    
     /**
      * @brief metodo per eseguire il ciclo principale dell'applicazione
-     * 
+     *
      * Questo metodo esegue il ciclo principale dell'applicazione, gestendo gli eventi della finestra e disegnando i frame.
-     * 
+     *
      * @return non ritorna nulla
      */
     void mainLoop()
@@ -483,9 +500,9 @@ private:
 
     /**
      * @brief metodo per pulire le risorse allocate da Vulkan
-     * 
+     *
      * Questo metodo distrugge tutte le risorse allocate da Vulkan, come la swap chain, i buffer, le immagini, i semafori, etc.
-     * 
+     *
      * @return non ritorna nulla
      */
     void cleanup()
@@ -544,9 +561,9 @@ private:
 
     /**
      * @brief metodo per creare l'istanza Vulkan
-     * 
+     *
      * Questo metodo crea l'istanza Vulkan, che è il primo oggetto da creare in un'applicazione Vulkan.
-     * 
+     *
      * @return non ritorna nulla
      */
     void createInstance()
@@ -580,9 +597,9 @@ private:
 
     /**
      * @brief metodo per creare la superficie di rendering Vulkan
-     * 
+     *
      * Questo metodo crea la superficie di rendering Vulkan, che è necessaria per visualizzare il contenuto della finestra.
-     * 
+     *
      * @return non ritorna nulla
      */
     void createSurface()
@@ -595,9 +612,9 @@ private:
 
     /**
      * @brief metodo per scegliere il dispositivo fisico Vulkan
-     * 
+     *
      * Questo metodo sceglie il dispositivo fisico Vulkan, che è il dispositivo che eseguirà le operazioni di rendering.
-     * 
+     *
      * @return non ritorna nulla
      */
     void pickPhysicalDevice()
@@ -628,12 +645,11 @@ private:
         }
     }
 
-    
-/**
+    /**
      * @brief metodo per verificare se il dispositivo fisico Vulkan è adatto
-     * 
+     *
      * Questo metodo verifica se il dispositivo fisico Vulkan è adatto per l'applicazione, controllando le queue family, le estensioni e le swap chain.
-     * 
+     *
      * @param device il dispositivo fisico Vulkan da verificare
      * @return true se il dispositivo è adatto, false altrimenti
      */
@@ -657,12 +673,11 @@ private:
         return indices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
     }
 
-    
-/**
+    /**
      * @brief metodo per verificare se il dispositivo fisico supporta le estensioni necessarie
-     * 
+     *
      * Questo metodo verifica se il dispositivo fisico supporta le estensioni necessarie per l'applicazione.
-     * 
+     *
      * @param device il dispositivo fisico Vulkan da verificare
      * @return true se il dispositivo supporta le estensioni, false altrimenti
      */
@@ -680,12 +695,11 @@ private:
         return requiredExtensions.empty();
     }
 
-    
-/**
+    /**
      * @brief metodo per trovare le queue family del dispositivo fisico
-     * 
+     *
      * Questo metodo trova le queue family del dispositivo fisico, che sono necessarie per creare il dispositivo logico.
-     * 
+     *
      * @param device il dispositivo fisico Vulkan da verificare
      * @return QueueFamilyIndices struct contenente gli indici delle queue family
      */
@@ -726,13 +740,12 @@ private:
         return indices;
     }
 
-    
-/**
+    /**
      * @brief metodo per creare il dispositivo logico Vulkan
-     * 
+     *
      * Questo metodo crea il dispositivo logico Vulkan utilizzando le queue family trovate in precedenza.
      * Il dispositivo logico è l'oggetto che ci permette di interagire con il dispositivo fisico e di eseguire le operazioni di rendering.
-     * 
+     *
      * @return non ritorna nulla
      */
     void createLogicalDevice()
@@ -798,13 +811,12 @@ private:
         vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
     }
 
-    
-/**
+    /**
      * @brief metodo per controllare il supporto dei validation layers
-     * 
+     *
      * Questo metodo controlla se i validation layers richiesti sono supportati dal sistema.
      * I validation layers sono strumenti utili durante lo sviluppo per rilevare errori e problemi di utilizzo dell'API Vulkan.
-     * 
+     *
      * @return true se i validation layers sono supportati, false altrimenti
      */
     bool checkValidationLayerSupport()
@@ -837,12 +849,11 @@ private:
         return true;
     }
 
-    
-/**
+    /**
      * @brief metodo per verificare capacità della superfice di presentazione, formati e modalità di presentazione
-     * 
+     *
      * Questo metodo verifica le capacità della superficie di presentazione, i formati supportati e le modalità di presentazione disponibili per il dispositivo fisico.
-     * 
+     *
      * @param device il dispositivo fisico Vulkan da verificare
      * @return SwapChainSupportDetails struct contenente le capacità della superficie, i formati e le modalità di presentazione
      */
@@ -875,8 +886,7 @@ private:
         return details;
     }
 
-    
-/**
+    /**
      * @brief metodo per scegliere il formato della superficie di presentazione più adatto
      * @param availableFormats i formati di superficie disponibili per il dispositivo fisico
      * @return il formato di superficie scelto
@@ -892,8 +902,8 @@ private:
         }
         return availableFormats[0];
     }
-    
-/**
+
+    /**
      * @brief metodo per scegliere la modalità di presentazione più adatta
      * @param availablePresentModes le modalità di presentazione disponibili per il dispositivo fisico
      * @return la modalità di presentazione scelta
@@ -919,13 +929,12 @@ private:
         return VK_PRESENT_MODE_FIFO_KHR;
     }
 
-    
-/**
+    /**
      * @brief metodo per scegliere le dimensioni della swap chain
      *
      * Questo metodo sceglie le dimensioni della swap chain in base alle capacità della superficie.
      * Le dimensioni della swap chain sono importanti perché determinano la risoluzione delle immagini che verranno presentate sullo schermo.
-     * 
+     *
      * @param capabilities le capacità della superficie
      * @return le dimensioni della swap chain scelte
      */
@@ -959,13 +968,12 @@ private:
         }
     }
 
-    
     /**
      * @brief metodo per creare la swap chain
-     * 
+     *
      * Questo metodo crea la swap chain, che è una serie di immagini che vengono presentate sullo schermo.
      * La swap chain è necessaria per visualizzare il contenuto della finestra.
-     * 
+     *
      * @return non ritorna nulla
      */
     void createSwapChain()
@@ -1056,12 +1064,11 @@ private:
         swapChainExtent = extent;
     }
 
-    
-/**
+    /**
      * @brief metodo per pulire la swap chain
-     * 
+     *
      * Questo metodo pulisce le risorse allocate per la swap chain, come le immagini, i framebuffer e le depth resources.
-     * 
+     *
      * @return non ritorna nulla
      */
     void cleanupSwapChain()
@@ -1079,7 +1086,6 @@ private:
         vkDestroySwapchainKHR(device, swapChain, nullptr);
     }
 
-    
     /**
      * @brief metodo per ricreare la swap chain
      *
@@ -1109,8 +1115,7 @@ private:
         createFramebuffers();
     }
 
-    
-/**
+    /**
      * @brief metodo per creare le image views della swap chain
      *
      * Questo metodo crea le image views per le immagini della swap chain.
@@ -1127,14 +1132,14 @@ private:
             swapChainImageViews[i] = createImageView(device, swapChainImages[i], swapChainImageFormat);
         }
     }
-    
-/**
+
+    /**
      * @brief metodo di creazione della pipeline grafica
-     * 
+     *
      * Questo metodo crea la pipeline grafica, che è responsabile del rendering delle immagini.
      * La pipeline grafica è un insieme di stati che definiscono come i vertici vengono trasformati in pixel e come i pixel vengono colorati.
      * La pipeline grafica è composta da diversi stadi, come il vertex shader, il fragment shader, la rasterizzazione, etc.
-     * 
+     *
      * @return non ritorna nulla
      */
     void createGraphicsPipeline()
@@ -1309,8 +1314,7 @@ private:
         shaderClass.disable();
     }
 
-    
-/**
+    /**
      * @brief metodo per creare il descriptor set layout
      *
      * Questo metodo crea il descriptor set layout, che è un oggetto vulkan che rappresenta il layout dei descriptor set.
@@ -1347,7 +1351,7 @@ private:
             throw std::runtime_error("failed to create descriptor set layout!");
         }
     }
-    
+
     /**
      * @brief metodo per creare il render pass
      *
@@ -1427,8 +1431,7 @@ private:
         }
     }
 
-    
-/**
+    /**
      * @brief metodo per creare i framebuffer
      *
      * Questo metodo crea i framebuffer, che sono oggetti vulkan che rappresentano le immagini della swap chain e le depth resources.
@@ -1464,8 +1467,7 @@ private:
         }
     }
 
-    
-/**
+    /**
      * @brief metodo per creare la command pool
      *
      * vulkan non ha funzioni specifiche per le sue operazioni, tipo quelle di disegno o di memoria
@@ -1495,12 +1497,11 @@ private:
         }
     }
 
-    
-/**
+    /**
      * @brief metodo per creare i buffer di comandi
-     * 
+     *
      * Questo metodo crea i buffer di comandi, che conterranno le istruzioni da eseguire dalla GPU.
-     * 
+     *
      * @return non ritorna nulla
      */
     void createCommandBuffers()
@@ -1522,8 +1523,7 @@ private:
         }
     }
 
-    
-/**
+    /**
      * @brief metodo per registrare i comandi nei buffer dedicato
      *
      * Questo metodo registra i comandi nei buffer di comandi, che verranno eseguiti dalla GPU.
@@ -1532,7 +1532,7 @@ private:
      *
      * @param commandBuffer il buffer di comandi in cui registrare i comandi
      * @param imageIndex l'indice dell'immagine della swap chain da utilizzare
-     * 
+     *
      * @note Questa metodologia di condivisione dei comandi è efficiente perché permette di registrare i comandi una sola volta e di eseguirli più volte, riducendo il carico sulla CPU.
      * @return non ritorna nulla
      */
@@ -1620,8 +1620,7 @@ private:
         }
     }
 
-    
-/**
+    /**
      * @brief metodo per creare i buffer uniformi
      *
      * Questo metodo crea i buffer uniformi, che verranno utilizzati per passare i dati alle shader.
@@ -1656,8 +1655,7 @@ private:
         }
     }
 
-    
-/**
+    /**
      * @brief metodo per aggiornare i buffer uniformi
      *
      * Questo metodo aggiorna i buffer uniformi con i dati correnti.
@@ -1685,8 +1683,7 @@ private:
         memcpy(uniformBuffersMapped[frame][meshIndex], &ubo, sizeof(ubo));
     }
 
-    
-/**
+    /**
      * @brief metodo per creare il descriptor pool
      *
      * Questo metodo crea il descriptor pool, oggetto che prende in gestione i descriptor set.
@@ -1715,8 +1712,7 @@ private:
         }
     }
 
-    
-/**
+    /**
      * @brief metodo per creare i descriptor set
      *
      * Questo metodo crea i descriptor set, oggetti che rappresentano le risorse da utilizzare nella pipeline grafica.
@@ -1809,8 +1805,7 @@ private:
         }
     }
 
-    
-/**
+    /**
      * @brief metodo per disegnare un frame
      *
      * Questo metodo gestisce il processo di disegno di un frame, inclusa l'acquisizione dell'immagine dalla swap chain e la registrazione dei comandi di disegno.
@@ -1916,8 +1911,7 @@ private:
         currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
     }
 
-    
-/**
+    /**
      * @brief metodo per inizializzare le mesh
      *
      * Questo metodo inizializza le mesh, creando i buffer di vertici e indici e caricando i dati delle mesh.
@@ -2042,8 +2036,7 @@ private:
         meshes[1]->addSubMesh(12, 12, 2);
     }
 
-    
-/**
+    /**
      * @brief metodo per inizializzare le texture
      *
      * Questo metodo inizializza le texture, creando gli oggetti Texture e caricando le immagini.
@@ -2059,8 +2052,7 @@ private:
         textures["holo"] = new Texture(device, physicalDevice, commandPool, graphicsQueue, "textures/holo.png");
     }
 
-    
-/**
+    /**
      * @brief metodo per creare gli oggetti utili alla sincronizzazione delle operazioni all'interno del sistema
      *
      * Questo metodo crea i semafori e le fence necessari per la sincronizzazione tra la CPU e la GPU.

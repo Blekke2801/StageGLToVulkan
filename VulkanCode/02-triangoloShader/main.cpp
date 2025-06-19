@@ -31,6 +31,12 @@ const std::vector<const char *> validationLayers = {
     "VK_LAYER_KHRONOS_validation"};
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
+
+/**
+ * @brief Struttura per gli indici delle famiglie di code.
+ *
+ * Questa struttura contiene gli indici delle famiglie di code necessarie per il rendering e la presentazione.
+ */
 struct QueueFamilyIndices
 {
     std::optional<uint32_t> graphicsFamily;
@@ -41,6 +47,12 @@ struct QueueFamilyIndices
         return graphicsFamily.has_value() && presentFamily.has_value();
     }
 };
+
+/**
+ * @brief Struttura per i dettagli del supporto della swap chain.
+ *
+ * Questa struttura contiene le informazioni necessarie per creare una swap chain.
+ */
 struct SwapChainSupportDetails
 {
     VkSurfaceCapabilitiesKHR capabilities;
@@ -1139,7 +1151,7 @@ private:
      *
      * @param commandBuffer il buffer di comandi in cui registrare i comandi
      * @param imageIndex l'indice dell'immagine della swap chain da utilizzare
-     * 
+     *
      * @note Questa metodologia di condivisione dei comandi è efficiente perché permette di registrare i comandi una sola volta e di eseguirli più volte, riducendo il carico sulla CPU.
      * @return non ritorna nulla
      */
@@ -1220,8 +1232,7 @@ private:
         }
     }
 
-    
-/**
+    /**
      * @brief metodo per disegnare un frame
      *
      * Questo metodo gestisce il processo di disegno di un frame, inclusa l'acquisizione dell'immagine dalla swap chain e la registrazione dei comandi di disegno.
@@ -1292,8 +1303,7 @@ private:
         vkQueuePresentKHR(presentQueue, &presentInfo);
     }
 
-    
-/**
+    /**
      * @brief metodo per creare gli oggetti utili alla sincronizzazione delle operazioni all'interno del sistema
      *
      * Questo metodo crea i semafori e le fence necessari per la sincronizzazione tra la CPU e la GPU.
