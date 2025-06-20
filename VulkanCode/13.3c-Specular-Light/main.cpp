@@ -480,7 +480,7 @@ private:
      */
     static void cubeControls(int key)
     {
-        float _speed = 10.0f;
+        float _speed = 3.0f; // abbassata per far notare meglio la rotazione e la risposta della luce
 
         switch (key)
         {

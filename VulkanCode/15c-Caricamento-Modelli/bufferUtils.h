@@ -158,4 +158,4 @@ void endSingleTimeCommands(VkDevice device, VkCommandPool commandPool, VkQueue g
  * @param format Il formato dell'immagine.
  * @return La vista immagine creata.
  */
-VkImageView createImageView(VkDevice device, VkImage image, VkFormat format);
+VkImageView createImageView(VkDevice device, VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
