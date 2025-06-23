@@ -151,7 +151,7 @@ void Mesh::addSubMesh(uint32_t offset, uint32_t count, int texIdx)
 
 void Mesh::draw(VkCommandBuffer cmd, uint32_t frameIndex,
                 VkPipelineLayout pipelineLayout,
-                std::function<void(uint32_t submeshIndex)> updateUniformCallback)
+                std::function<void()> updateUniformCallback)
 {
     VkBuffer vb = getVertexBuffer();
     VkDeviceSize offsets[] = {0};
@@ -167,17 +167,22 @@ void Mesh::draw(VkCommandBuffer cmd, uint32_t frameIndex,
         {
             const auto &sub = subMeshes[i];
             uint32_t index = static_cast<uint32_t>(sub.textureIndex);
-            //questo mi permette di passare l'indice della texture alla shader
+            // questo mi permette di passare l'indice della texture alla shader
             vkCmdPushConstants(cmd, pipelineLayout,
                                VK_SHADER_STAGE_FRAGMENT_BIT,
                                0, sizeof(uint32_t), &index);
-            updateUniformCallback(i); // aggiorna ubo con il textureIndex giusto
+            updateUniformCallback();
             vkCmdDraw(cmd, sub.indexCount, 1, sub.indexOffset, 0);
         }
     }
     else
     {
-        updateUniformCallback(0); // se non ci sono submesh, usa quello principale
+        uint32_t index = static_cast<uint32_t>(textures.begin()->second);
+        // questo mi permette di passare l'indice della texture alla shader
+        vkCmdPushConstants(cmd, pipelineLayout,
+                           VK_SHADER_STAGE_FRAGMENT_BIT,
+                           0, sizeof(uint32_t), &index);
+        updateUniformCallback();
         vkCmdDraw(cmd, getVertexCount(), 1, 0, 0);
     }
 }

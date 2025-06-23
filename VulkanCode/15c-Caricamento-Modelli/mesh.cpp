@@ -194,7 +194,7 @@ void Mesh::loadFromFile(const std::string &filename, unsigned int flags)
 
 void Mesh::draw(VkCommandBuffer cmd, uint32_t frameIndex,
                 VkPipelineLayout pipelineLayout,
-                std::function<void(uint32_t submeshIndex)> updateUniformCallback)
+                std::function<void()> updateUniformCallback)
 {
     VkBuffer vb = getVertexBuffer();
     VkDeviceSize offsets[] = {0};
@@ -219,7 +219,7 @@ void Mesh::draw(VkCommandBuffer cmd, uint32_t frameIndex,
             vkCmdPushConstants(cmd, pipelineLayout,
                                VK_SHADER_STAGE_FRAGMENT_BIT,
                                0, sizeof(uint32_t), &index);
-            updateUniformCallback(i); // aggiorna ubo con il textureIndex giusto
+            updateUniformCallback(); // aggiorna ubo con il textureIndex giusto
             if (hasIndexBuffer)
             {
                 vkCmdDrawIndexed(cmd, sub.indexCount, 1, sub.indexOffset, 0, 0);
@@ -237,7 +237,7 @@ void Mesh::draw(VkCommandBuffer cmd, uint32_t frameIndex,
         vkCmdPushConstants(cmd, pipelineLayout,
                            VK_SHADER_STAGE_FRAGMENT_BIT,
                            0, sizeof(uint32_t), &index);
-        updateUniformCallback(0); // se non ci sono submesh, usa quello principale
+        updateUniformCallback(); // se non ci sono submesh, usa quello principale
         if (hasIndexBuffer)
         {
             vkCmdDrawIndexed(cmd, getIndexCount(), 1, 0, 0, 0);

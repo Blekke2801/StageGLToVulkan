@@ -132,7 +132,7 @@ public:
      */
     void draw(VkCommandBuffer cmd, uint32_t frameIndex,
               VkPipelineLayout pipelineLayout,
-              std::function<void(uint32_t submeshIndex)> updateUniformCallback);
+              std::function<void()> updateUniformCallback);
 
 private:
     /**

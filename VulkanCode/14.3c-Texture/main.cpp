@@ -1604,9 +1604,9 @@ private:
         {
             Mesh *mesh = meshes[i];
             mesh->draw(commandBuffer, currentFrame, pipelineLayout,
-                       [&](uint32_t subIndex)
+                       [&]()
                        {
-                           updateUniformBuffer(currentFrame, i);
+                           updateUniformBuffer(currentFrame, i); // per aggiornare il buffer uniforme al disegno della mesh corrente
                        });
         }
 

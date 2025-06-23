@@ -1781,7 +1781,7 @@ private:
                 // Disegna subito gli opachi
                 vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, wireframeMode ? wirePipelines[0] : noWirePipelines[0]);
                 meshes[index]->draw(commandBuffer, currentFrame, pipelineLayout,
-                                    [&](uint32_t subIndex)
+                                    [&]()
                                     {
                                         updateUniformBuffer(currentFrame);
                                     });
@@ -1800,7 +1800,7 @@ private:
         {
             vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, wireframeMode ? wirePipelines[1] : noWirePipelines[1]);
             meshes[index]->draw(commandBuffer, currentFrame, pipelineLayout,
-                                [&](uint32_t subIndex)
+                                [&]()
                                 {
                                     updateUniformBuffer(currentFrame);
                                 });
