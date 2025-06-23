@@ -1395,8 +1395,6 @@ private:
         pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         pipelineLayoutInfo.setLayoutCount = 1;                 // abbiamo solo 1 descriptor set layout, quindi 1
         pipelineLayoutInfo.pSetLayouts = &descriptorSetLayout; // il layout dei descriptor set, che abbiamo creato prima
-        pipelineLayoutInfo.pushConstantRangeCount = 0;         // opzionale
-        pipelineLayoutInfo.pPushConstantRanges = nullptr;
 
         // questo struct specifica il range dei push constant, che sono dei dati che possiamo passare alla pipeline
         VkPushConstantRange pushConstantRange{};
@@ -1405,7 +1403,7 @@ private:
         pushConstantRange.size = sizeof(uint32_t);
 
         pipelineLayoutInfo.pushConstantRangeCount = 1;
-        pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange; // opzionale
+        pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
         // ora che abbiamo settato tutti i parametri, possiamo finalmente creare la pipeline layout
         if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
         {
