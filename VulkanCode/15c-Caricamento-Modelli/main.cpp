@@ -99,6 +99,7 @@ struct MyCamera
     glm::vec3 up;
     float yaw;
     float pitch;
+    float speed;
 };
 
 glm::mat4 baseTransform = glm::mat4(1.0f); // matrice di trasformazione del cubo
@@ -140,7 +141,9 @@ struct MyCamera camera{
     glm::vec3(0.0f, 0.0f, 4.0f), // posizione della camera
     glm::vec3(0.0f, 0.0f, 0.0f), // target della camera
     glm::vec3(0.0f, 1.0f, 0.0f), // vettore up della camera
-    -90.0f, 0.0f};               // angoli di yaw e pitch della camera
+    -90.0f, 0.0f,                // angoli di yaw e pitch della camera
+    0.5f                         // velocità della camera
+};
 
 AmbientLight ambient_light(glm::vec3(1, 1, 1), 0.2); // colore e intensità della luce ambientale
 
@@ -373,7 +376,6 @@ private:
         //   per farlo usiamo la funzione std::chrono::high_resolution_clock::now() che ci permette di ottenere il tempo attuale
         //   e la funzione std::chrono::duration<float>(currentTime - previousTime).count() che ci permette di calcolare il delta time
         //   così da rendere il triangolo animato in modo fluido e non a scatti
-        float _speed = 0.5f;
         // calcola il vettore perpendicolare alla direzione della camera
         glm::vec3 direction = glm::normalize(camera.target - camera.pos);
         glm::vec3 right = glm::normalize(glm::cross(direction, camera.up));
@@ -381,23 +383,23 @@ private:
         {
         case GLFW_KEY_UP:
             // spostiamo la camera in avanti nella direzione in cui sta guardando
-            camera.pos += direction * _speed;
-            camera.target += direction * _speed;
+            camera.pos += direction * camera.speed;
+            camera.target += direction * camera.speed;
             break;
         case GLFW_KEY_DOWN:
             // spostiamo la camera indietro nella direzione opposta a quella in cui sta guardando
-            camera.pos -= direction * _speed;
-            camera.target -= direction * _speed;
+            camera.pos -= direction * camera.speed;
+            camera.target -= direction * camera.speed;
             break;
         case GLFW_KEY_LEFT:
             // spostiamo la camera a sinistra nella direzione perpendicolare alla direzione in cui sta guardando
-            camera.pos -= right * _speed;
-            camera.target -= right * _speed;
+            camera.pos -= right * camera.speed;
+            camera.target -= right * camera.speed;
             break;
         case GLFW_KEY_RIGHT:
             // spostiamo la camera a destra nella direzione opposta a quella in cui sta guardando
-            camera.pos += right * _speed;
-            camera.target += right * _speed;
+            camera.pos += right * camera.speed;
+            camera.target += right * camera.speed;
             break;
         case GLFW_KEY_SPACE:
             // reset della camera
@@ -494,12 +496,14 @@ private:
     {
         meshToRender.clear(); // svuotiamo il vettore delle mesh da renderizzare
         meshCount = 0;        // resettiamo il contatore delle mesh
+        float k =  0.08f; // variabile per calcolare la velocità della camera
         switch (key)
         {
         case GLFW_KEY_T:
             // carichiamo il modello del teapot
             cameraControls(GLFW_KEY_SPACE);                                              // reset della camera
             baseTransform = glm::translate(glm::mat4(), glm::vec3(0.0f, -1.6f, -10.0f)); // scalatura del teapot
+            camera.speed = k * glm::length(glm::vec3(0.0f, -1.6f, -10.0f) - camera.pos); // velocità della camera
             meshToRender = {0};
             meshCount = 1; // settiamo il contatore delle mesh a 1
             break;
@@ -507,6 +511,7 @@ private:
             // carichiamo il modello del teschio
             cameraControls(GLFW_KEY_SPACE); // reset della camera
             baseTransform = glm::translate(glm::mat4(), glm::vec3(0.0f, -5.0f, -17.0f));
+            camera.speed = k * glm::length(glm::vec3(0.0f, -5.0f, -17.0f) - camera.pos); // velocità della camera
             meshToRender = {1};
             meshCount = 1; // settiamo il contatore delle mesh a 1
             break;
@@ -514,6 +519,7 @@ private:
             // carichiamo il modello del drago
             cameraControls(GLFW_KEY_SPACE); // reset della camera
             baseTransform = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, -4.0f));
+            camera.speed = k * glm::length(glm::vec3(0.0f, 0.0f, -4.0f) - camera.pos); // velocità della camera
             meshToRender = {2};
             meshCount = 1; // settiamo il contatore delle mesh a 1
             break;
@@ -521,6 +527,7 @@ private:
             // carichiamo il modello della scarpone
             cameraControls(GLFW_KEY_SPACE); // reset della camera
             baseTransform = glm::translate(glm::mat4(), glm::vec3(0.0f, -10.0f, -70.0f));
+            camera.speed = k * glm::length(glm::vec3(0.0f, -10.0f, -70.0f) - camera.pos); // velocità della camera
             meshToRender = {3};
             meshCount = 1; // settiamo il contatore delle mesh a 1
             break;
@@ -529,6 +536,7 @@ private:
             cameraControls(GLFW_KEY_SPACE); // reset della camera
             baseTransform = glm::translate(glm::mat4(), glm::vec3(0.0f, -4.0f, -15.0f)) *
                             glm::rotate(glm::mat4(), glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+            camera.speed = k * glm::length(glm::vec3(0.0f, -4.0f, -15.0f) - camera.pos); // velocità della camera
             meshToRender = {4};
             break;
         case GLFW_KEY_M:
@@ -536,6 +544,7 @@ private:
             cameraControls(GLFW_KEY_SPACE);
             baseTransform = glm::translate(glm::mat4(), glm::vec3(0.0f, -1.7f, 1.0f)) *
                             glm::rotate(glm::mat4(), glm::radians(180.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+            camera.speed = k * glm::length(glm::vec3(0.0f, -1.7f, 1.0f) - camera.pos); // velocità della camera
             meshToRender = {5, 6, 7, 8, 9, 10, 11};
             meshCount = 7;
             break;
